@@ -34,8 +34,12 @@ final class User
      */
     public static function fromRow(array $row): self
     {
-        /** @var string[] $roles */
-        $roles = json_decode((string) $row['roles'], true) ?: [];
+        // Kolumna `roles` jest typu JSON, więc jej zawartość jest dowolna -
+        // przepuszczamy tylko napisy, zamiast ufać kształtowi danych w bazie.
+        $roles = array_values(array_filter(
+            (array) (json_decode((string) $row['roles'], true) ?: []),
+            static fn(mixed $role): bool => is_string($role),
+        ));
 
         return new self(
             id: (int) $row['id'],

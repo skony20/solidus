@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<psalm
+    errorLevel="1"
+    findUnusedBaselineEntry="true"
+    findUnusedCode="false"
+    ensureOverrideAttribute="false"
+    strictBinaryOperands="false"
+    cacheDirectory="./runtime/cache/psalm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+>
+    <projectFiles>
+        <directory name="src" />
+        <file name="public/index.php" />
+        <file name="yii" />
+        <ignoreFiles>
+            <directory name="vendor" />
+        </ignoreFiles>
+    </projectFiles>
+    <issueHandlers>
+        <MixedAssignment errorLevel="suppress" />
+        <RiskyTruthyFalsyComparison errorLevel="suppress" />
+
+        <!--
+            Wyciszone świadomie, nie dla wygody.
+
+            Solidus ma trzy granice, na których dane są z definicji nieznanego
+            kształtu: ciało żądania HTTP (json_decode), wiersz z bazy i
+            odpowiedź zewnętrznej aplikacji (AML, DelegoApp, sygnaliści).
+            Psalm widzi tam `mixed` i zgłasza, że deklaracja `array<string, mixed>`
+            jest węższa niż `array<array-key, mixed>` - formalnie ma rację,
+            ale to samo w sobie nie jest błędem: te dane są walidowane
+            jawnie, w DTO (ClientInput) albo przez rzutowania w encjach.
+
+            Wyciszamy więc dwie konkretne rodziny problemów z tych granic,
+            a nie cały poziom kontroli - PossiblyNull*, MixedPropertyFetch
+            i reszta nadal są egzekwowane.
+        -->
+        <MixedReturnTypeCoercion errorLevel="suppress" />
+        <MixedArgumentTypeCoercion errorLevel="suppress" />
+    </issueHandlers>
+</psalm>

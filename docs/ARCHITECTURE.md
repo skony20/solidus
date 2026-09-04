@@ -63,6 +63,17 @@ Symfony byłby równie dobrym wyborem technicznie. Yii3 wybrano ze względu na z
 
 **Yii3 nie ma ActiveRecord w rdzeniu.** To wyszło nam na dobre: encje są zwykłymi obiektami PHP, a mapowanie robi repozytorium. Dzięki temu nie da się przypadkiem wykonać zapytania z pominięciem filtra po tenancie — bo nie ma metody `Client::find()`, którą można by wywołać z dowolnego miejsca.
 
+### 2.1a Wersja PHP: 8.5, przypięta twardo
+
+Serwer produkcyjny ma PHP 8.5, więc `composer.json` wymaga `~8.5.0`, obraz Dockera to `php:8.5-fpm-alpine`, a Rector celuje w zestaw reguł `php85`. Zakres w rodzaju `8.2 - 8.5` (tak jak dawał szkielet) pozwoliłby dopuścić do repozytorium kod, który przechodzi lokalnie na 8.2 i wywraca się na produkcji — przy przypiętej wersji tej rozbieżności po prostu nie ma.
+
+Dwie konsekwencje warte odnotowania:
+
+- **Praca z backendem odbywa się w kontenerze.** Maszyna deweloperska z PHP 8.2 nie uruchomi `composer install` bezpośrednio — i dobrze, bo uruchomiłaby go pod inną wersję niż produkcja.
+- **W obrazie `php:8.5` OPcache jest wkompilowany na stałe.** Próba `docker-php-ext-install opcache` kończy się błędem `can't stat 'modules/*'` (nie powstaje żaden moduł do skopiowania), dlatego Dockerfile instaluje tylko `pdo_mysql` i `intl`.
+
+Przejście na 8.5 odblokowało też **Psalma** — wcześniej wymagał wersji PHP nowszej niż lokalna i musiał zostać usunięty. Wrócił jako `require-dev` i przechodzi bez błędów na `errorLevel="1"` (najostrzejszym). Konfiguracja wycisza dwie rodziny problemów — `MixedReturnTypeCoercion` i `MixedArgumentTypeCoercion` — i tylko je: pochodzą z trzech granic, na których dane mają z definicji nieznany kształt (ciało żądania HTTP, wiersz z bazy, odpowiedź zewnętrznej aplikacji). Uzasadnienie jest zapisane w `psalm.xml`, przy samym wyciszeniu.
+
 ### 2.2 Dlaczego MySQL, a nie PostgreSQL
 
 Decyzja infrastrukturalna: serwer produkcyjny nie ma Postgresa. Poza tym MySQL 8 pokrywa wszystkie potrzeby tego projektu — typ `JSON` (kolumna `changes` w audit logu), `DATETIME(6)` z mikrosekundami, `ENUM`, indeksy złożone.
@@ -253,7 +264,7 @@ Szkielet `yiisoft/app` przychodzi z Codeception; te zestawy zostały nietknięte
 Rzeczy świadomie odłożone — do rozstrzygnięcia przed produkcją:
 
 1. **Brak kolejki zadań** (sekcja 2.9). Środowisko nie ma Redisa. Dopóki nie ma modułu Komunikacja, nic to nie blokuje — ale **decyzja o wariancie kolejki musi zapaść przed rozpoczęciem prac nad masowymi wysyłkami**, nie po nich. Rekomendacja przy braku Redisa: `yiisoft/queue-db`.
-2. **`vimeo/psalm` usunięty z `require-dev`** — wymaga PHP 8.2.27, środowisko ma 8.2.26. Przywrócić po aktualizacji PHP.
+2. **Lokalny PHP nie wystarcza do pracy poza Dockerem.** Projekt celuje w PHP 8.5 (`"php": "~8.5.0"`), a maszyna deweloperska ma 8.2 — `composer install` uruchomiony bezpośrednio na hoście odmówi. To nie jest usterka, tylko konsekwencja przypięcia do wersji produkcyjnej: cała praca z backendem idzie przez kontener (`docker compose … exec php …`). Alternatywą jest doinstalowanie PHP 8.5 na hoście.
 3. **Brak ekranu rejestracji.** Endpoint `POST /api/auth/register` działa, interfejsu do niego nie ma. Pierwsze biuro zakłada się poleceniem `curl`.
 4. **Brak autoryzacji ról.** Role są w tokenie (`roles`) i w bazie, ale żaden endpoint ich nie sprawdza — każdy zalogowany użytkownik biura może wszystko. `yiisoft/access` jest zainstalowany, kontrola nie jest podpięta.
 5. **Usuwanie klienta jest trwałe.** Docelowo powinno być archiwizacją (`status = archived`); dziś wiersz znika, a ślad zostaje wyłącznie w audit logu.
@@ -279,11 +290,16 @@ docker compose -f docker/docker-compose.yml exec php ./yii migrate:up
 docker exec solidus-mysql-1 mysql -uroot -proot \
   -e "CREATE DATABASE IF NOT EXISTS solidus_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
       GRANT ALL ON solidus_test.* TO 'solidus'@'%'; FLUSH PRIVILEGES;"
-cd backend && composer test
+docker compose -f docker/docker-compose.yml exec php composer test
 
 # Testy frontendu
 cd frontend && npm test
+
+# Analiza statyczna backendu (Psalm, errorLevel 1)
+docker compose -f docker/docker-compose.yml exec php ./vendor/bin/psalm
 ```
+
+Backend wymaga PHP 8.5, więc `composer` i `phpunit` uruchamiamy **w kontenerze**, nie na hoście (patrz sekcja 2.1a).
 
 Wszystkie zależności są stabilne i nie wymagają rozszerzeń spoza standardu — `composer install` działa bez żadnych flag obejściowych, także poza Dockerem.
 

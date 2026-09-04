@@ -102,7 +102,12 @@ final readonly class JwtService
         return new AuthenticatedUser(
             userId: (int) $claims['sub'],
             tenantId: (int) $claims['tid'],
-            roles: array_map('strval', (array) ($claims['roles'] ?? [])),
+            // Claim `roles` przychodzi z zewnątrz (choć podpisany), więc
+            // odrzucamy wszystko, co nie jest napisem, zamiast rzutować na siłę.
+            roles: array_values(array_filter(
+                (array) ($claims['roles'] ?? []),
+                static fn(mixed $role): bool => is_string($role),
+            )),
             tokenId: (string) $claims['jti'],
         );
     }

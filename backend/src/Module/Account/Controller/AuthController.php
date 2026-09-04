@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Module\Account\Controller;
 
+use App\Shared\Auth\AuthenticatedUser;
 use App\Module\Account\Repository\TenantRepository;
 use App\Module\Account\Repository\UserRepository;
 use App\Module\Account\Service\RefreshCookie;
@@ -53,11 +54,17 @@ final readonly class AuthController extends ApiController
             return $this->json->unprocessable('Podaj biuro, e-mail i haslo.');
         }
 
-        $tenant = $this->tenants->findBySlug($slug);
-        $user = $tenant === null ? null : $this->users->findByEmail($tenant->id, $email);
-
         // Jeden komunikat dla wszystkich przyczyn - inaczej formularz logowania
-        // staje sie narzedziem do sprawdzania, czy dany e-mail istnieje.
+        // staje sie narzedziem do sprawdzania, czy dane biuro albo dany
+        // e-mail istnieje.
+        $tenant = $this->tenants->findBySlug($slug);
+
+        if ($tenant === null) {
+            return $this->json->unauthorized('Nieprawidlowe dane logowania.');
+        }
+
+        $user = $this->users->findByEmail($tenant->id, $email);
+
         if ($user === null || !$user->isActive || !$user->verifyPassword($password)) {
             return $this->json->unauthorized('Nieprawidlowe dane logowania.');
         }
@@ -148,7 +155,9 @@ final readonly class AuthController extends ApiController
     {
         $identity = $request->getAttribute(TenantMiddleware::REQUEST_ATTRIBUTE);
 
-        if ($identity === null) {
+        // Atrybut żądania jest z natury nietypowany - sprawdzamy typ, zamiast
+        // ufać, że middleware wstawił to, czego oczekujemy.
+        if (!$identity instanceof AuthenticatedUser) {
             return $this->json->unauthorized();
         }
 

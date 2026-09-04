@@ -41,7 +41,12 @@ final readonly class AmlRiskScore
             clientId: (int) ($payload['clientId'] ?? 0),
             score: (int) ($payload['score'] ?? 0),
             level: (string) ($payload['level'] ?? self::LEVEL_LOW),
-            factors: array_map('strval', (array) ($payload['factors'] ?? [])),
+            // Odpowiedź zewnętrznej aplikacji nie ma gwarantowanego kształtu -
+            // bierzemy tylko te czynniki ryzyka, które faktycznie są napisami.
+            factors: array_values(array_filter(
+                (array) ($payload['factors'] ?? []),
+                static fn(mixed $factor): bool => is_string($factor),
+            )),
             calculatedAt: new DateTimeImmutable((string) ($payload['calculatedAt'] ?? 'now')),
         );
     }
