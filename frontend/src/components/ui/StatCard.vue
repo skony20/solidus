@@ -37,7 +37,7 @@ const valueTones: Record<string, string> = {
       class="mt-1.5 flex items-center gap-1 text-[13px]"
       :class="trendTone === 'positive' ? 'text-emerald-bright' : 'text-magenta-bright'"
     >
-      <span class="material-symbols-outlined !text-base">
+      <span class="material-symbols-outlined text-base!">
         {{ icon ?? (trendTone === 'positive' ? 'trending_up' : 'warning') }}
       </span>
       {{ trend }}

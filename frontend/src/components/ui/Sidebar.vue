@@ -30,11 +30,11 @@ const initials = computed(() =>
 <template>
   <aside
     class="sticky top-0 z-40 flex h-screen w-[272px] shrink-0 flex-col border-r border-white/[0.06] bg-[rgba(13,19,33,0.6)] px-5 py-7 backdrop-blur-[24px] max-[900px]:fixed max-[900px]:-translate-x-full max-[900px]:transition-transform max-[900px]:duration-[250ms]"
-    :class="open && 'max-[900px]:!translate-x-0'"
+    :class="open && 'max-[900px]:translate-x-0!'"
   >
     <div>
       <div
-        class="bg-gradient-to-r from-cyan-bright to-cyan bg-clip-text text-[26px] font-extrabold leading-[1.05] tracking-[-0.02em] text-transparent"
+        class="bg-linear-to-r from-cyan-bright to-cyan bg-clip-text text-[26px] font-extrabold leading-[1.05] tracking-[-0.02em] text-transparent"
       >
         SOLIDUS
       </div>
@@ -57,7 +57,7 @@ const initials = computed(() =>
       <NavItem to="/ustawienia" icon="settings" label="Ustawienia" />
       <div class="mt-2.5 flex items-center gap-2.5 px-1.5 py-2">
         <div
-          class="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-gradient-to-br from-magenta to-cyan text-[13px] font-bold text-space"
+          class="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-linear-to-br from-magenta to-cyan text-[13px] font-bold text-space"
         >
           {{ initials || '?' }}
         </div>

@@ -1,95 +1,151 @@
 /*
  * Tokeny designu Solidusa.
  *
- * Zrodlo prawdy: docs/design/solidus.html (blok :root). Wartosci sa
- * przepisane 1:1 - jesli zmieni sie makieta, zmieniamy najpierw ten plik,
- * a Tailwind (tailwind.config.ts) czyta te zmienne, wiec reszta interfejsu
- * podaza automatycznie.
+ * Źródło prawdy: docs/design/solidus.html (blok :root). Wartości są
+ * przepisane 1:1 - jeśli zmieni się makieta, zmieniamy najpierw ten plik.
+ *
+ * Tailwind 4 konfiguruje się w CSS, nie w pliku JS. Blok `@theme` poniżej
+ * jest jednocześnie definicją zmiennych CSS i konfiguracją Tailwinda:
+ * `--color-cyan-bright` daje od ręki klasy `text-cyan-bright`, `bg-cyan-bright`,
+ * `border-cyan-bright` i zmienną `var(--color-cyan-bright)` do użycia we
+ * własnym CSS. W wersji 3 to samo wymagało dwóch plików trzymanych w zgodzie -
+ * tokens.css i tailwind.config.ts. Teraz nie da się ich rozjechać.
+ *
+ * Nazwy są podyktowane przez Tailwinda: prefiks decyduje, jakie klasy powstaną
+ * (--color-* → kolory, --radius-* → zaokrąglenia, --shadow-* → cienie,
+ * --blur-* → rozmycia, --animate-* → animacje).
  */
-:root {
-  /* Tla i powierzchnie */
-  --space-bg: #050b18;
-  --surface: #0d1321;
-  --surface-container-low: #151c29;
-  --surface-container: #19202d;
-  --surface-container-high: #232a38;
-  --surface-container-highest: #2e3543;
-  --outline-variant: #3b494a;
+@theme {
+  /* --- Tła i powierzchnie --- */
+  --color-space: #050b18;
+  --color-surface: #0d1321;
+  --color-surface-low: #151c29;
+  --color-surface-container: #19202d;
+  --color-surface-high: #232a38;
+  --color-surface-highest: #2e3543;
+  --color-outline: #3b494a;
 
-  /* Tekst */
-  --on-surface: #dce2f5;
-  --on-surface-variant: #9aa7ad;
+  /* --- Tekst --- */
+  --color-content: #dce2f5;
+  --color-content-variant: #9aa7ad;
 
-  /* Akcenty */
-  --cyan: #00dbe7;
-  --cyan-bright: #72f5ff;
-  --magenta: #ff4b89;
-  --magenta-bright: #ff86b3;
-  --emerald: #00e28b;
-  --emerald-bright: #4cffa5;
-  --amber: #ffb140;
+  /* --- Akcenty --- */
+  --color-cyan: #00dbe7;
+  --color-cyan-bright: #72f5ff;
+  --color-magenta: #ff4b89;
+  --color-magenta-bright: #ff86b3;
+  --color-emerald: #00e28b;
+  --color-emerald-bright: #4cffa5;
+  --color-amber: #ffb140;
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Promienie z makiety: karty 2rem, małe karty 1rem, nawigacja 14px. */
+  --radius-glass: 2rem;
+  --radius-glass-sm: 1rem;
+  --radius-nav: 14px;
+
+  /* Poświaty z makiety: aktywna pozycja menu i przycisk akcji. */
+  --shadow-nav-active:
+    0 0 24px -6px rgba(0, 219, 231, 0.45) inset, 0 0 18px -8px rgba(0, 219, 231, 0.5);
+  --shadow-glow: 0 0 26px -2px rgba(0, 219, 231, 0.65);
+  --shadow-glow-magenta: 0 0 26px -2px rgba(255, 75, 137, 0.65);
+
+  --blur-glass: 20px;
+  --blur-bar: 18px;
+
+  /* Przejście między modułami - identyczne jak w makiecie. */
+  --animate-fade-in: fadeIn 0.35s ease;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@layer base {
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--color-content);
+    min-height: 100vh;
+    /* Dwie poświaty w rogach - to one dają wrażenie głębi pod szklanymi kartami. */
+    background:
+      radial-gradient(ellipse 1200px 600px at 15% -10%, rgba(0, 219, 231, 0.1), transparent 60%),
+      radial-gradient(ellipse 900px 500px at 100% 0%, rgba(255, 75, 137, 0.08), transparent 60%),
+      var(--color-space);
+    background-attachment: fixed;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-highest);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
-html,
-body,
-#app {
-  height: 100%;
+/*
+ * Prymitywy „szkła".
+ *
+ * Zostają klasami CSS, a nie zestawem utility, bo gradient + obramowanie +
+ * rozmycie zawsze występują razem - rozbicie ich na sześć klas Tailwinda
+ * kończy się kopiowaniem tej szóstki w każdym komponencie.
+ *
+ * Warstwa `components` sprawia, że utility (np. `rounded-full` czy `border-…`
+ * dopisane w konkretnym miejscu) mają nad nimi pierwszeństwo.
+ */
+@layer components {
+  .glass {
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(var(--blur-glass));
+    border-radius: var(--radius-glass);
+  }
+
+  .glass-sm {
+    border-radius: var(--radius-glass-sm);
+  }
+
+  .hairline {
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
 }
 
-body {
-  margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color: var(--on-surface);
-  min-height: 100vh;
-  /* Dwie poswiaty w rogach - to one daja wrazenie glebi pod szklanymi kartami. */
-  background:
-    radial-gradient(ellipse 1200px 600px at 15% -10%, rgba(0, 219, 231, 0.1), transparent 60%),
-    radial-gradient(ellipse 900px 500px at 100% 0%, rgba(255, 75, 137, 0.08), transparent 60%),
-    var(--space-bg);
-  background-attachment: fixed;
-}
-
+/*
+ * Ikony Material Symbols - CELOWO POZA JAKĄKOLWIEK WARSTWĄ.
+ *
+ * Arkusz z fonts.googleapis.com definiuje `.material-symbols-outlined`
+ * (font-size: 24px, display: inline-block) i nie należy do żadnej warstwy CSS.
+ * Reguła spoza warstw wygrywa z każdą regułą warstwową niezależnie od
+ * specyficzności i kolejności - a Tailwind 4 pakuje w warstwy wszystko,
+ * łącznie z `@layer base`. Gdyby ten blok siedział w `@layer base`, ikony
+ * miałyby 24px zamiast 20px z makiety.
+ *
+ * Ta sama zasada dotyczy klas Tailwinda nakładanych na te ikony: rozmiar
+ * trzeba wymuszać modyfikatorem `!` (np. `text-[18px]!`), a klas sterujących
+ * `display` w ogóle na nich nie używamy - idą na element nadrzędny.
+ */
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   font-size: 20px;
   line-height: 1;
   user-select: none;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--surface-container-highest);
-  border-radius: 8px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/*
- * Prymitywy "szkla". Zostaja klasami CSS, a nie zestawem klas Tailwinda,
- * bo gradient + obramowanie + rozmycie zawsze wystepuja razem - rozbicie
- * ich na utility konczy sie kopiowaniem szesciu klas w kazdym komponencie.
- */
-.glass {
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  border-radius: 2rem;
-}
-
-.glass-sm {
-  border-radius: 1rem;
-}
-
-.hairline {
-  border: 1px solid rgba(255, 255, 255, 0.07);
 }

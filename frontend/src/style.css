@@ -1,5 +1,13 @@
+/*
+ * Tailwind 4: jeden import zamiast trzech dyrektyw @tailwind z wersji 3.
+ * Konfiguracja motywu (blok @theme) siedzi w tokens.css.
+ *
+ * `@source` wskazuje pliki skanowane w poszukiwaniu klas. Domyślnie Tailwind
+ * wykrywa je sam, ale podanie tego jawnie zabezpiecza przed sytuacją, w której
+ * klasa użyta wyłącznie w komponencie ładowanym leniwie zostaje pominięta.
+ */
+@import 'tailwindcss';
 @import './styles/tokens.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@source './**/*.{vue,ts}';
+@source '../index.html';

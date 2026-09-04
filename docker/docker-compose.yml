@@ -93,6 +93,9 @@ services:
       - node-modules:/app/node_modules
     environment:
       VITE_API_URL: http://localhost:8080
+      # Bez tego Vite nie zauważa zmian w plikach - powiadomienia systemu
+      # plików nie przechodzą przez bind-mount z hosta do kontenera.
+      VITE_USE_POLLING: "true"
 
 volumes:
   mysql-data:

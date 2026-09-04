@@ -13,8 +13,8 @@ withDefaults(
 )
 
 const variants: Record<string, string> = {
-  cyan: 'bg-gradient-to-br from-cyan-bright to-cyan text-[#00363a] hover:shadow-glow',
-  magenta: 'bg-gradient-to-br from-magenta-bright to-magenta text-[#3f0019] hover:shadow-glow-magenta',
+  cyan: 'bg-linear-to-br from-cyan-bright to-cyan text-[#00363a] hover:shadow-glow',
+  magenta: 'bg-linear-to-br from-magenta-bright to-magenta text-[#3f0019] hover:shadow-glow-magenta',
   ghost: 'bg-surface-low border border-outline text-content hover:border-[rgba(0,219,231,0.4)] hover:text-cyan-bright',
 }
 </script>

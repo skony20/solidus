@@ -75,7 +75,7 @@ const teamPerformance = [
             </div>
             <div class="h-2 overflow-hidden rounded-full bg-surface-highest">
               <div
-                class="h-full rounded-full bg-gradient-to-r"
+                class="h-full rounded-full bg-linear-to-r"
                 :class="member.tone"
                 :style="{ width: `${member.value}%` }"
               />
@@ -89,14 +89,14 @@ const teamPerformance = [
 
       <GlassCard accent="magenta" padding="lg" class="flex flex-col items-center text-center">
         <div class="flex w-full items-center gap-1.5 font-bold text-magenta-bright">
-          <span class="material-symbols-outlined !text-[18px]">warning</span> Ryzyko AML
+          <span class="material-symbols-outlined text-[18px]!">warning</span> Ryzyko AML
         </div>
         <svg width="150" height="150" viewBox="0 0 150 150" class="my-3">
-          <circle cx="75" cy="75" r="62" fill="none" stroke="var(--surface-container-highest)" stroke-width="12" />
-          <text x="75" y="70" text-anchor="middle" font-size="34" font-weight="800" fill="var(--on-surface-variant)">
+          <circle cx="75" cy="75" r="62" fill="none" stroke="var(--color-surface-highest)" stroke-width="12" />
+          <text x="75" y="70" text-anchor="middle" font-size="34" font-weight="800" fill="var(--color-content-variant)">
             —
           </text>
-          <text x="75" y="92" text-anchor="middle" font-size="11" fill="var(--on-surface-variant)">
+          <text x="75" y="92" text-anchor="middle" font-size="11" fill="var(--color-content-variant)">
             WSKAŹNIK
           </text>
         </svg>

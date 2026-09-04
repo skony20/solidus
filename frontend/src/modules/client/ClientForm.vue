@@ -55,7 +55,7 @@ watch(
 )
 
 const inputClass =
-  'w-full rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-none placeholder:text-content-variant focus:border-[rgba(0,219,231,0.5)]'
+  'w-full rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-hidden placeholder:text-content-variant focus:border-[rgba(0,219,231,0.5)]'
 </script>
 
 <template>

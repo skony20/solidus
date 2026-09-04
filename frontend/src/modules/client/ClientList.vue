@@ -91,7 +91,7 @@ function formatNip(nip: string | null): string {
                 data-test="client-remove"
                 @click.stop="$emit('remove', client)"
               >
-                <span class="material-symbols-outlined !text-[18px]">delete</span>
+                <span class="material-symbols-outlined text-[18px]!">delete</span>
               </button>
             </td>
           </tr>

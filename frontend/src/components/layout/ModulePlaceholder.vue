@@ -61,7 +61,7 @@ onMounted(async () => {
         <h3 class="m-0 mb-4 text-[19px] font-bold">Co się tu pojawi</h3>
         <ul class="m-0 flex list-none flex-col gap-2.5 p-0 text-sm text-content-variant">
           <li v-for="feature in plannedFeatures" :key="feature" class="flex items-start gap-2.5">
-            <span class="material-symbols-outlined mt-px !text-base text-cyan-bright">
+            <span class="material-symbols-outlined mt-px text-base! text-cyan-bright">
               chevron_right
             </span>
             {{ feature }}

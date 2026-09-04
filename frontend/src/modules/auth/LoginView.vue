@@ -27,7 +27,7 @@ async function submit(): Promise<void> {
   <div class="flex min-h-screen items-center justify-center p-6">
     <GlassCard padding="lg" class="w-full max-w-[420px]">
       <div
-        class="bg-gradient-to-r from-cyan-bright to-cyan bg-clip-text text-[26px] font-extrabold tracking-[-0.02em] text-transparent"
+        class="bg-linear-to-r from-cyan-bright to-cyan bg-clip-text text-[26px] font-extrabold tracking-[-0.02em] text-transparent"
       >
         SOLIDUS
       </div>
@@ -43,7 +43,7 @@ async function submit(): Promise<void> {
             required
             autocomplete="organization"
             placeholder="np. biuro-nowak"
-            class="rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-none placeholder:text-content-variant focus:border-[rgba(0,219,231,0.5)]"
+            class="rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-hidden placeholder:text-content-variant focus:border-[rgba(0,219,231,0.5)]"
           />
         </label>
 
@@ -54,7 +54,7 @@ async function submit(): Promise<void> {
             type="email"
             required
             autocomplete="username"
-            class="rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-none focus:border-[rgba(0,219,231,0.5)]"
+            class="rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-hidden focus:border-[rgba(0,219,231,0.5)]"
           />
         </label>
 
@@ -65,7 +65,7 @@ async function submit(): Promise<void> {
             type="password"
             required
             autocomplete="current-password"
-            class="rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-none focus:border-[rgba(0,219,231,0.5)]"
+            class="rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-hidden focus:border-[rgba(0,219,231,0.5)]"
           />
         </label>
 

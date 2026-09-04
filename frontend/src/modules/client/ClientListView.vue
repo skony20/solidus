@@ -80,13 +80,13 @@ function openClient(client: Client): void {
         >
           <div class="relative min-w-[200px] flex-1">
             <span
-              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 !text-base text-content-variant"
+              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-base! text-content-variant"
             >
               search
             </span>
             <input
               v-model="search"
-              class="w-full rounded-full border border-outline bg-surface-low py-2.5 pl-9 pr-3.5 text-[13px] text-content outline-none placeholder:text-content-variant focus:border-[rgba(0,219,231,0.4)]"
+              class="w-full rounded-full border border-outline bg-surface-low py-2.5 pl-9 pr-3.5 text-[13px] text-content outline-hidden placeholder:text-content-variant focus:border-[rgba(0,219,231,0.4)]"
               placeholder="Szukaj po nazwie lub NIP..."
               @keyup.enter="applyFilters"
             />
@@ -115,7 +115,7 @@ function openClient(client: Client): void {
 
       <GlassCard padding="sm">
         <h3 class="m-0 mb-1.5 flex items-center gap-2 text-[15px] font-bold">
-          <span class="material-symbols-outlined !text-[18px] text-cyan-bright">person_add</span>
+          <span class="material-symbols-outlined text-[18px]! text-cyan-bright">person_add</span>
           Nowy klient
         </h3>
 
@@ -134,7 +134,7 @@ function openClient(client: Client): void {
           </p>
           <button
             type="button"
-            class="w-full rounded-nav bg-gradient-to-br from-cyan-bright to-cyan px-5 py-2.5 text-[13px] font-bold text-[#00363a] transition-all duration-150 hover:-translate-y-px hover:shadow-glow"
+            class="w-full rounded-nav bg-linear-to-br from-cyan-bright to-cyan px-5 py-2.5 text-[13px] font-bold text-[#00363a] transition-all duration-150 hover:-translate-y-px hover:shadow-glow"
             @click="showForm = true"
           >
             Dodaj klienta
