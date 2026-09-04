@@ -1,0 +1,95 @@
+/*
+ * Tokeny designu Solidusa.
+ *
+ * Zrodlo prawdy: docs/design/solidus.html (blok :root). Wartosci sa
+ * przepisane 1:1 - jesli zmieni sie makieta, zmieniamy najpierw ten plik,
+ * a Tailwind (tailwind.config.ts) czyta te zmienne, wiec reszta interfejsu
+ * podaza automatycznie.
+ */
+:root {
+  /* Tla i powierzchnie */
+  --space-bg: #050b18;
+  --surface: #0d1321;
+  --surface-container-low: #151c29;
+  --surface-container: #19202d;
+  --surface-container-high: #232a38;
+  --surface-container-highest: #2e3543;
+  --outline-variant: #3b494a;
+
+  /* Tekst */
+  --on-surface: #dce2f5;
+  --on-surface-variant: #9aa7ad;
+
+  /* Akcenty */
+  --cyan: #00dbe7;
+  --cyan-bright: #72f5ff;
+  --magenta: #ff4b89;
+  --magenta-bright: #ff86b3;
+  --emerald: #00e28b;
+  --emerald-bright: #4cffa5;
+  --amber: #ffb140;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--on-surface);
+  min-height: 100vh;
+  /* Dwie poswiaty w rogach - to one daja wrazenie glebi pod szklanymi kartami. */
+  background:
+    radial-gradient(ellipse 1200px 600px at 15% -10%, rgba(0, 219, 231, 0.1), transparent 60%),
+    radial-gradient(ellipse 900px 500px at 100% 0%, rgba(255, 75, 137, 0.08), transparent 60%),
+    var(--space-bg);
+  background-attachment: fixed;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-size: 20px;
+  line-height: 1;
+  user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-container-highest);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/*
+ * Prymitywy "szkla". Zostaja klasami CSS, a nie zestawem klas Tailwinda,
+ * bo gradient + obramowanie + rozmycie zawsze wystepuja razem - rozbicie
+ * ich na utility konczy sie kopiowaniem szesciu klas w kazdym komponencie.
+ */
+.glass {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 2rem;
+}
+
+.glass-sm {
+  border-radius: 1rem;
+}
+
+.hairline {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}

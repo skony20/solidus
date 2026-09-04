@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Shared\Http\CorsMiddleware;
 use App\Web\NotFound\NotFoundHandler;
-use Yiisoft\Csrf\CsrfTokenMiddleware;
 use Yiisoft\Definitions\DynamicReference;
 use Yiisoft\Definitions\Reference;
 use Yiisoft\ErrorHandler\Middleware\ErrorCatcher;
@@ -27,6 +27,12 @@ return [
                 'withMiddlewares()' => [
                     [
                         ErrorCatcher::class,
+                        // CORS musi stac PRZED routerem. Zapytanie kontrolne
+                        // OPTIONS nie pasuje do zadnej naszej trasy (mamy tylko
+                        // GET/POST/PUT/DELETE), wiec router odpowiedzialby na nie
+                        // sam - bez naglowkow CORS - i przegladarka zablokowalaby
+                        // wlasciwe zadanie, zanim dotarloby do aplikacji.
+                        CorsMiddleware::class,
                         SessionMiddleware::class,
                         // CsrfTokenMiddleware ze szkieletu zostal tu celowo
                         // pominiety. Chroni on formularze uwierzytelniane

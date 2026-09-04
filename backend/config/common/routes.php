@@ -14,7 +14,6 @@ use App\Module\MissionControl\Controller\MissionControlController;
 use App\Module\Settings\Controller\SettingsController;
 use App\Module\Team\Controller\TeamController;
 use App\Module\Whistleblower\Controller\WhistleblowerController;
-use App\Shared\Http\CorsMiddleware;
 use App\Shared\Tenant\TenantMiddleware;
 use App\Web;
 use Yiisoft\Router\Group;
@@ -35,7 +34,6 @@ return [
 
     // --- Publiczne: rejestracja i logowanie -----------------------------
     Group::create('/api/auth')
-        ->middleware(CorsMiddleware::class)
         ->routes(
             Route::post('/register')->action([RegistrationController::class, 'register'])->name('auth/register'),
             Route::post('/login')->action([AuthController::class, 'login'])->name('auth/login'),
@@ -45,7 +43,6 @@ return [
 
     // --- Chronione: wymagaja waznego access tokenu ----------------------
     Group::create('/api')
-        ->middleware(CorsMiddleware::class)
         ->middleware(TenantMiddleware::class)
         ->routes(
             Route::get('/auth/me')->action([AuthController::class, 'me'])->name('auth/me'),
