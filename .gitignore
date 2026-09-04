@@ -1,0 +1,34 @@
+# PHP / Composer
+/backend/vendor/
+/backend/runtime/
+/backend/public/assets/
+composer.phar
+.phpunit.result.cache
+.php-cs-fixer.cache
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+
+# Env
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker / dane lokalne
+/docker/data/

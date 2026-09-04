@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Solidus — Centrum Dowodzenia</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet"/>
+<style>
+  :root{
+    --space-bg:#050b18;
+    --surface:#0d1321;
+    --surface-container-low:#151c29;
+    --surface-container:#19202d;
+    --surface-container-high:#232a38;
+    --surface-container-highest:#2e3543;
+    --outline-variant:#3b494a;
+    --on-surface:#dce2f5;
+    --on-surface-variant:#9aa7ad;
+    --cyan:#00dbe7;
+    --cyan-bright:#72f5ff;
+    --magenta:#ff4b89;
+    --magenta-bright:#ff86b3;
+    --emerald:#00e28b;
+    --emerald-bright:#4cffa5;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    background:
+      radial-gradient(ellipse 1200px 600px at 15% -10%, rgba(0,219,231,0.10), transparent 60%),
+      radial-gradient(ellipse 900px 500px at 100% 0%, rgba(255,75,137,0.08), transparent 60%),
+      var(--space-bg);
+    color:var(--on-surface);
+    min-height:100vh;
+    display:flex;
+  }
+  .material-symbols-outlined{
+    font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;
+    font-size:20px; line-height:1;
+  }
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--surface-container-highest);border-radius:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  /* Glass primitives */
+  .glass{
+    background:linear-gradient(155deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012));
+    border:1px solid rgba(255,255,255,0.08);
+    backdrop-filter:blur(20px);
+    border-radius:2rem;
+  }
+  .glass-sm{ border-radius:1rem; }
+  .hairline{ border:1px solid rgba(255,255,255,0.07); }
+
+  /* Sidebar */
+  .sidebar{
+    width:272px; flex-shrink:0; position:sticky; top:0; height:100vh;
+    background:rgba(13,19,33,0.6); backdrop-filter:blur(24px);
+    border-right:1px solid rgba(255,255,255,0.06);
+    display:flex; flex-direction:column; padding:28px 20px;
+  }
+  .brand-title{
+    font-weight:800; font-size:26px; line-height:1.05; letter-spacing:-0.02em;
+    background:linear-gradient(90deg,var(--cyan-bright),var(--cyan));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:14px;
+    color:var(--on-surface-variant); font-size:14px; font-weight:600; cursor:pointer;
+    transition:all .15s ease; border:1px solid transparent; margin-bottom:4px;
+  }
+  .nav-item:hover{ background:rgba(255,255,255,0.04); color:var(--on-surface); }
+  .nav-item.active{
+    background:rgba(0,219,231,0.10);
+    border-color:rgba(0,219,231,0.35);
+    color:var(--cyan-bright);
+    box-shadow:0 0 24px -6px rgba(0,219,231,0.45) inset, 0 0 18px -8px rgba(0,219,231,0.5);
+  }
+  .nav-item.active .material-symbols-outlined{ font-variation-settings:'FILL' 1,'wght' 500; }
+
+  .glow-btn{
+    background:linear-gradient(135deg,var(--cyan-bright),var(--cyan));
+    color:#00363a; font-weight:700; border:none; border-radius:14px;
+    box-shadow:0 0 0px rgba(0,219,231,0); transition:box-shadow .2s ease, transform .15s ease;
+  }
+  .glow-btn:hover{ box-shadow:0 0 26px -2px rgba(0,219,231,0.65); transform:translateY(-1px); }
+
+  /* Topbar */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    backdrop-filter:blur(18px); background:rgba(13,19,33,0.55);
+    border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .search-input{
+    background:var(--surface-container-low); border:1px solid var(--outline-variant);
+    border-radius:9999px; color:var(--on-surface); font-size:14px;
+  }
+  .search-input::placeholder{ color:var(--on-surface-variant); }
+  .icon-btn{
+    width:38px; height:38px; border-radius:9999px; display:flex; align-items:center; justify-content:center;
+    background:var(--surface-container-low); border:1px solid var(--outline-variant); color:var(--on-surface-variant);
+    cursor:pointer; transition:all .15s ease;
+  }
+  .icon-btn:hover{ color:var(--cyan-bright); border-color:rgba(0,219,231,0.4); }
+
+  .page{ display:none; animation:fadeIn .35s ease; }
+  .page.active{ display:block; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .badge{ padding:3px 12px; border-radius:9999px; font-size:11px; font-weight:700; letter-spacing:.04em; }
+  .badge-critical{ background:rgba(255,75,137,0.14); color:var(--magenta-bright); border:1px solid rgba(255,75,137,0.35);}
+  .badge-elevated{ background:rgba(255,177,64,0.14); color:#ffb140; border:1px solid rgba(255,177,64,0.35);}
+  .badge-low{ background:rgba(0,226,139,0.14); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);}
+  .badge-neutral{ background:var(--surface-container-highest); color:var(--on-surface-variant); border:1px solid var(--outline-variant); }
+
+  .bar-track{ height:8px; border-radius:9999px; background:var(--surface-container-highest); overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:9999px; }
+
+  .kpi-card{ padding:24px; }
+  .section-title{ font-size:26px; font-weight:800; letter-spacing:-0.01em; }
+  .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.12em; color:var(--on-surface-variant); text-transform:uppercase; }
+
+  .chat-bubble-in{ background:var(--surface-container-high); border-radius:18px 18px 18px 4px; }
+  .chat-bubble-out{ background:linear-gradient(135deg, rgba(0,219,231,0.22), rgba(0,219,231,0.10)); border:1px solid rgba(0,219,231,0.3); border-radius:18px 18px 4px 18px; }
+
+  .msc-list-row:hover{ background:rgba(255,255,255,0.03); }
+
+  @media (max-width: 900px){
+    .sidebar{ position:fixed; z-index:40; transform:translateX(-100%); transition:transform .25s ease; }
+    .sidebar.open{ transform:translateX(0); }
+    .main-col{ width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div>
+    <div class="brand-title">SOLIDUS</div>
+    <div class="eyebrow" style="margin-top:6px;">System Biura Rachunkowego</div>
+  </div>
+
+  <nav style="margin-top:24px; flex:1; overflow-y:auto; padding-right:4px;">
+    <div class="nav-item active" data-page="mission-control">
+      <span class="material-symbols-outlined">grid_view</span> Centrum Dowodzenia
+    </div>
+    <div class="nav-item" data-page="klienci">
+      <span class="material-symbols-outlined">contacts</span> Klienci
+    </div>
+    <div class="nav-item" data-page="aml-risk">
+      <span class="material-symbols-outlined">shield</span> Ryzyko AML
+    </div>
+    <div class="nav-item" data-page="delegacje">
+      <span class="material-symbols-outlined">flight_takeoff</span> Delegacje
+    </div>
+    <div class="nav-item" data-page="communications">
+      <span class="material-symbols-outlined">hub</span> Komunikacja
+    </div>
+    <div class="nav-item" data-page="kalendarz">
+      <span class="material-symbols-outlined">calendar_month</span> Kalendarz
+    </div>
+    <div class="nav-item" data-page="financials">
+      <span class="material-symbols-outlined">account_balance</span> Finanse
+    </div>
+    <div class="nav-item" data-page="team">
+      <span class="material-symbols-outlined">groups</span> Zespół
+    </div>
+  </nav>
+
+  <div style="border-top:1px solid rgba(255,255,255,0.07); padding-top:14px;">
+    <div class="nav-item" data-page="ustawienia"><span class="material-symbols-outlined">settings</span> Ustawienia</div>
+    <div class="nav-item"><span class="material-symbols-outlined">help</span> Wsparcie</div>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 6px;">
+      <div style="width:34px;height:34px;border-radius:9999px;background:linear-gradient(135deg,var(--magenta),var(--cyan));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#050b18;">AK</div>
+      <div>
+        <div style="font-size:13px; font-weight:700;">ADMIN_01</div>
+        <div style="font-size:11px; color:var(--emerald-bright); display:flex; align-items:center; gap:4px;">
+          <span style="width:6px;height:6px;border-radius:9999px;background:var(--emerald-bright); display:inline-block;"></span> Aktywny
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main-col" style="flex:1; min-width:0;">
+
+  <!-- TOPBAR -->
+  <div class="topbar" style="padding:16px 32px; display:flex; align-items:center; gap:16px;">
+    <span class="material-symbols-outlined" id="menuToggle" style="display:none; cursor:pointer;">menu</span>
+    <div style="position:relative; flex:1; max-width:420px;">
+      <span class="material-symbols-outlined" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--on-surface-variant); font-size:18px;">search</span>
+      <input class="search-input" style="width:100%; padding:11px 16px 11px 40px;" placeholder="Szukaj danych, klientów, transmisji..." />
+    </div>
+    <div style="flex:1;"></div>
+    <div class="icon-btn"><span class="material-symbols-outlined" style="font-size:18px;">notifications</span></div>
+    <div class="icon-btn"><span class="material-symbols-outlined" style="font-size:18px;">podcasts</span></div>
+    <div class="icon-btn"><span class="material-symbols-outlined" style="font-size:18px;">hub</span></div>
+    <div class="icon-btn" data-goto="ai-hub" title="Automatyzacja" style="border-color:rgba(0,219,231,0.35); color:var(--cyan-bright);"><span class="material-symbols-outlined" style="font-size:18px;">bolt</span></div>
+  </div>
+
+  <div style="padding:32px; max-width:1400px;">
+
+    <!-- ============ MISSION CONTROL ============ -->
+    <section class="page active" id="page-mission-control">
+      <div class="eyebrow">Przegląd Ogólny</div>
+      <h1 class="section-title" style="margin:4px 0 16px;">Centrum Dowodzenia</h1>
+
+      <div class="glass" style="padding:18px 26px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; border-color:rgba(0,226,139,0.3);">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(0,226,139,0.12); border:1px solid rgba(0,226,139,0.35); display:flex; align-items:center; justify-content:center; position:relative;">
+            <span class="material-symbols-outlined" style="color:var(--emerald-bright);">dns</span>
+            <span style="position:absolute; top:-3px; right:-3px; width:11px; height:11px; border-radius:9999px; background:var(--emerald-bright); border:2px solid var(--surface);"></span>
+          </div>
+          <div>
+            <div style="font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;">
+              Połączenie z KSeF
+              <span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);">AKTYWNE</span>
+            </div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Ostatnia synchronizacja: dziś, 09:47 • kolejka: 6 dokumentów • śr. czas odpowiedzi API: 0.8s</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+          <div style="text-align:right;">
+            <div style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">Zaburzenia (24h)</div>
+            <div style="font-size:13px; color:#ffb140; font-weight:700; margin-top:2px;">1 zdarzenie — wydłużona odpowiedź API MF, 14:20–14:45</div>
+          </div>
+          <span class="material-symbols-outlined" style="color:var(--cyan-bright); cursor:pointer;" data-goto="klienci" title="Zobacz statusy KSeF per klient">chevron_right</span>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+        <div class="glass kpi-card">
+          <div class="eyebrow">Obrót w tym miesiącu</div>
+          <div style="font-size:38px; font-weight:800; color:var(--cyan-bright); margin-top:6px;">120 000 zł</div>
+          <div style="font-size:13px; color:var(--emerald-bright); margin-top:6px; display:flex; align-items:center; gap:4px;">
+            <span class="material-symbols-outlined" style="font-size:16px;">trending_up</span> +12.4% vs poprzedni miesiąc
+          </div>
+        </div>
+        <div class="glass kpi-card">
+          <div class="eyebrow">Aktywni Klienci</div>
+          <div style="font-size:38px; font-weight:800; margin-top:6px;">80</div>
+          <div style="font-size:13px; color:var(--emerald-bright); margin-top:6px; display:flex; align-items:center; gap:4px;">
+            <span class="material-symbols-outlined" style="font-size:16px;">trending_up</span> +3 nowych w tym miesiącu
+          </div>
+        </div>
+        <div class="glass kpi-card" style="border-color:rgba(255,75,137,0.35);">
+          <div class="eyebrow">Anomalie AML</div>
+          <div style="font-size:38px; font-weight:800; color:var(--magenta-bright); margin-top:6px;">12</div>
+          <div style="font-size:13px; color:var(--magenta-bright); margin-top:6px; display:flex; align-items:center; gap:4px;">
+            <span class="material-symbols-outlined" style="font-size:16px;">warning</span> Wymaga natychmiastowej weryfikacji
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1.7fr 1fr; gap:20px; margin-top:20px;">
+        <div class="glass" style="padding:28px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <h3 style="font-size:19px; font-weight:700; margin:0;">Wydajność Zespołu</h3>
+            <span style="font-size:13px; color:var(--cyan-bright); cursor:pointer;" data-goto="team">Zobacz zespół →</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:600; margin-bottom:6px;"><span>Anna Kowalska</span><span style="color:var(--emerald-bright);">94%</span></div>
+              <div class="bar-track"><div class="bar-fill" style="width:94%; background:linear-gradient(90deg,var(--emerald),var(--cyan));"></div></div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:600; margin-bottom:6px;"><span>Jan Nowak</span><span style="color:var(--magenta-bright);">61%</span></div>
+              <div class="bar-track"><div class="bar-fill" style="width:61%; background:linear-gradient(90deg,var(--magenta),#ffb140);"></div></div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:600; margin-bottom:6px;"><span>Alex Wójcik</span><span style="color:var(--cyan-bright);">88%</span></div>
+              <div class="bar-track"><div class="bar-fill" style="width:88%; background:linear-gradient(90deg,var(--cyan),var(--cyan-bright));"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass" style="padding:28px; border-color:rgba(255,75,137,0.3); display:flex; flex-direction:column; align-items:center; text-align:center;">
+          <div style="display:flex; align-items:center; gap:6px; color:var(--magenta-bright); font-weight:700; align-self:flex-start;">
+            <span class="material-symbols-outlined" style="font-size:18px;">warning</span> Ryzyko AML
+          </div>
+          <svg width="150" height="150" viewBox="0 0 150 150" style="margin:12px 0;">
+            <circle cx="75" cy="75" r="62" fill="none" stroke="var(--surface-container-highest)" stroke-width="12"/>
+            <circle cx="75" cy="75" r="62" fill="none" stroke="var(--magenta-bright)" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="389.6" stroke-dashoffset="97.4" transform="rotate(-90 75 75)"/>
+            <text x="75" y="70" text-anchor="middle" font-size="34" font-weight="800" fill="var(--on-surface)" font-family="Inter">75</text>
+            <text x="75" y="92" text-anchor="middle" font-size="11" fill="var(--on-surface-variant)" font-family="Inter">WSKAŹNIK</text>
+          </svg>
+          <div style="font-size:12px; color:var(--on-surface-variant);">Ostatni skan: 2 min temu</div>
+          <button class="glow-btn" style="margin-top:14px; padding:8px 20px; font-size:13px; background:linear-gradient(135deg,var(--magenta-bright),var(--magenta)); color:#3f0019;">Skanuj</button>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:28px; margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:19px; font-weight:700; margin:0;">Najbliższe Terminy</h3>
+          <span style="font-size:13px; color:var(--cyan-bright); cursor:pointer;">Zobacz logi →</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--cyan-bright);">
+            <div><div style="font-weight:700;">Q3 Tax Filing — Alpha Corp</div><div style="font-size:12px; color:var(--on-surface-variant);">Termin: 48 godzin</div></div>
+            <span class="badge badge-critical">KRYTYCZNE</span>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--magenta-bright);">
+            <div><div style="font-weight:700;">Payroll Audit — Beta Systems</div><div style="font-size:12px; color:var(--on-surface-variant);">Termin: 5 dni</div></div>
+            <span class="badge badge-elevated">STANDARD</span>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--outline-variant);">
+            <div><div style="font-weight:700;">Annual Report — Gamma LLC</div><div style="font-size:12px; color:var(--on-surface-variant);">Termin: 14 dni</div></div>
+            <span class="badge badge-neutral">NISKIE</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ AML RISK ============ -->
+    <!-- ============ KLIENCI ============ -->
+    <section class="page" id="page-klienci">
+      <div class="eyebrow">CRM 360°</div>
+      <h1 class="section-title" style="margin:4px 0 24px;">Baza Klientów</h1>
+
+      <div style="display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start;">
+        <div class="glass" style="padding:0; overflow:hidden;">
+          <div style="padding:20px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.07); gap:12px; flex-wrap:wrap;">
+            <div style="position:relative; flex:1; min-width:200px;">
+              <span class="material-symbols-outlined" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--on-surface-variant); font-size:16px;">search</span>
+              <input class="search-input" style="width:100%; padding:9px 14px 9px 36px; font-size:13px;" placeholder="Szukaj po nazwie lub NIP..." />
+            </div>
+            <div style="display:flex; gap:6px;">
+              <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.35); cursor:pointer;">WSZYSCY</span>
+              <span class="badge badge-neutral" style="cursor:pointer;">WYMAGA UWAGI</span>
+              <span class="badge badge-neutral" style="cursor:pointer;">NOWI</span>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="text-align:left; color:var(--on-surface-variant); font-size:11px; text-transform:uppercase; letter-spacing:.04em;">
+                <th style="padding:10px 20px; font-weight:600;">Klient</th>
+                <th style="padding:10px 12px; font-weight:600;">NIP</th>
+                <th style="padding:10px 12px; font-weight:600;">Opiekun</th>
+                <th style="padding:10px 12px; font-weight:600;">KSeF</th>
+                <th style="padding:10px 12px; font-weight:600;">Kondycja</th>
+                <th style="padding:10px 20px; font-weight:600;">Plan</th>
+              </tr>
+            </thead>
+            <tbody id="clientsTableBody">
+              <tr class="client-row msc-list-row hairline" data-client="stellar" style="cursor:pointer;">
+                <td style="padding:14px 20px; font-weight:700;">Stellar Dynamics Sp. z o.o.</td>
+                <td style="padding:14px 12px; color:var(--on-surface-variant);">521-00-12-345</td>
+                <td style="padding:14px 12px;">Anna Kowalska</td>
+                <td style="padding:14px 12px;"><span class="badge badge-low">GOTOWY</span></td>
+                <td style="padding:14px 12px;"><span style="width:10px;height:10px;border-radius:9999px;background:var(--emerald-bright); display:inline-block;"></span></td>
+                <td style="padding:14px 20px;">Premium</td>
+              </tr>
+              <tr class="client-row msc-list-row hairline" data-client="nova" style="cursor:pointer;">
+                <td style="padding:14px 20px; font-weight:700;">Nova Corp Sp. z o.o.</td>
+                <td style="padding:14px 12px; color:var(--on-surface-variant);">734-11-98-221</td>
+                <td style="padding:14px 12px;">Jan Nowak</td>
+                <td style="padding:14px 12px;"><span class="badge badge-elevated">LUKI W NUMERACJI</span></td>
+                <td style="padding:14px 12px;"><span style="width:10px;height:10px;border-radius:9999px;background:#ffb140; display:inline-block;"></span></td>
+                <td style="padding:14px 20px;">Team</td>
+              </tr>
+              <tr class="client-row msc-list-row hairline" data-client="nebula" style="cursor:pointer;">
+                <td style="padding:14px 20px; font-weight:700;">Nebula Systems Jan Kowalczyk</td>
+                <td style="padding:14px 12px; color:var(--on-surface-variant);">889-22-10-004</td>
+                <td style="padding:14px 12px;">Alex Wójcik</td>
+                <td style="padding:14px 12px;"><span class="badge badge-critical">BŁĄD PRZESYŁU</span></td>
+                <td style="padding:14px 12px;"><span style="width:10px;height:10px;border-radius:9999px;background:var(--magenta-bright); display:inline-block;"></span></td>
+                <td style="padding:14px 20px;">Solo</td>
+              </tr>
+              <tr class="client-row msc-list-row" data-client="quantum" style="cursor:pointer;">
+                <td style="padding:14px 20px; font-weight:700;">Quantum Financial S.A.</td>
+                <td style="padding:14px 12px; color:var(--on-surface-variant);">612-77-30-889</td>
+                <td style="padding:14px 12px;">Anna Kowalska</td>
+                <td style="padding:14px 12px;"><span class="badge badge-low">GOTOWY</span></td>
+                <td style="padding:14px 12px;"><span style="width:10px;height:10px;border-radius:9999px;background:var(--emerald-bright); display:inline-block;"></span></td>
+                <td style="padding:14px 20px;">Premium</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        <div class="glass" style="padding:22px;">
+          <h3 style="margin:0 0 6px; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px;">
+            <span class="material-symbols-outlined" style="color:var(--cyan-bright); font-size:18px;">person_add</span> Nowy klient
+          </h3>
+          <p style="font-size:12px; color:var(--on-surface-variant); margin:0 0 14px;">Wpisz NIP, a system pobierze dane rejestrowe automatycznie.</p>
+          <input class="search-input" style="width:100%; padding:10px 14px; margin-bottom:12px;" placeholder="Wpisz NIP..." />
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+            <div class="hairline" style="border-radius:10px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;">
+              <span>REGON (GUS)</span><span class="material-symbols-outlined" style="font-size:16px; color:var(--emerald-bright);">check_circle</span>
+            </div>
+            <div class="hairline" style="border-radius:10px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;">
+              <span>CEIDG</span><span class="material-symbols-outlined" style="font-size:16px; color:var(--emerald-bright);">check_circle</span>
+            </div>
+            <div class="hairline" style="border-radius:10px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;">
+              <span>KRS</span><span class="material-symbols-outlined" style="font-size:16px; color:var(--emerald-bright);">check_circle</span>
+            </div>
+            <div class="hairline" style="border-radius:10px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;">
+              <span>Biała Lista VAT</span><span class="material-symbols-outlined" style="font-size:16px; color:var(--emerald-bright);">check_circle</span>
+            </div>
+            <div class="hairline" style="border-radius:10px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;">
+              <span>CRBR (beneficjenci)</span><span class="material-symbols-outlined" style="font-size:16px; color:var(--on-surface-variant);">link</span>
+            </div>
+          </div>
+          <div style="font-size:11px; color:var(--on-surface-variant); margin-top:10px;">CRBR bez masowego API rządowego — link do ręcznej weryfikacji.</div>
+          <button class="glow-btn" style="width:100%; margin-top:14px; padding:11px; font-size:13px;" id="startOnboardingBtn">Rozpocznij onboarding klienta</button>
+        </div>
+      </div>
+
+      <!-- ===== ONBOARDING NOWEGO KLIENTA ===== -->
+      <div class="glass" id="onboardingPanel" style="padding:0; margin-top:20px; overflow:hidden; display:none; border-color:rgba(0,219,231,0.3);">
+        <div style="padding:22px 28px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">Onboarding w toku</div>
+            <div style="font-size:18px; font-weight:800; margin-top:2px;">Nova Trade Sp. z o.o. <span style="font-weight:400; color:var(--on-surface-variant); font-size:13px;">• NIP 445-19-83-771</span></div>
+          </div>
+          <span class="badge badge-elevated" id="onboardingStatusBadge">KROK 3 / 7</span>
+        </div>
+
+        <!-- Stepper -->
+        <div style="padding:22px 28px 6px; display:flex; align-items:flex-start; overflow-x:auto;">
+          <div class="ob-step" data-step="1" style="display:flex; flex-direction:column; align-items:center; min-width:96px;">
+            <div class="ob-dot" style="width:30px;height:30px;border-radius:9999px; display:flex; align-items:center; justify-content:center; background:var(--emerald-bright); color:#00361b; font-weight:800; font-size:13px;">✓</div>
+            <div style="font-size:10px; text-align:center; margin-top:6px; color:var(--on-surface-variant);">Dane rejestrowe</div>
+          </div>
+          <div style="flex:1; height:2px; background:var(--emerald-bright); margin-top:15px;"></div>
+          <div class="ob-step" data-step="2" style="display:flex; flex-direction:column; align-items:center; min-width:96px;">
+            <div class="ob-dot" style="width:30px;height:30px;border-radius:9999px; display:flex; align-items:center; justify-content:center; background:var(--emerald-bright); color:#00361b; font-weight:800; font-size:13px;">✓</div>
+            <div style="font-size:10px; text-align:center; margin-top:6px; color:var(--on-surface-variant);">Ocena ryzyka AML</div>
+          </div>
+          <div style="flex:1; height:2px; background:var(--emerald-bright); margin-top:15px;"></div>
+          <div class="ob-step" data-step="3" style="display:flex; flex-direction:column; align-items:center; min-width:96px;">
+            <div class="ob-dot" style="width:30px;height:30px;border-radius:9999px; display:flex; align-items:center; justify-content:center; background:var(--cyan-bright); color:#00363a; font-weight:800; font-size:13px;">3</div>
+            <div style="font-size:10px; text-align:center; margin-top:6px; color:var(--on-surface);">Umowa</div>
+          </div>
+          <div style="flex:1; height:2px; background:var(--outline-variant); margin-top:15px;"></div>
+          <div class="ob-step" data-step="4" style="display:flex; flex-direction:column; align-items:center; min-width:96px;">
+            <div class="ob-dot" style="width:30px;height:30px;border-radius:9999px; display:flex; align-items:center; justify-content:center; background:var(--surface-container-highest); color:var(--on-surface-variant); font-weight:800; font-size:13px;">4</div>
+            <div style="font-size:10px; text-align:center; margin-top:6px; color:var(--on-surface-variant);">RODO</div>
+          </div>
+          <div style="flex:1; height:2px; background:var(--outline-variant); margin-top:15px;"></div>
+          <div class="ob-step" data-step="5" style="display:flex; flex-direction:column; align-items:center; min-width:96px;">
+            <div class="ob-dot" style="width:30px;height:30px;border-radius:9999px; display:flex; align-items:center; justify-content:center; background:var(--surface-container-highest); color:var(--on-surface-variant); font-weight:800; font-size:13px;">5</div>
+            <div style="font-size:10px; text-align:center; margin-top:6px; color:var(--on-surface-variant);">Pełnomocnictwa</div>
+          </div>
+          <div style="flex:1; height:2px; background:var(--outline-variant); margin-top:15px;"></div>
+          <div class="ob-step" data-step="6" style="display:flex; flex-direction:column; align-items:center; min-width:96px;">
+            <div class="ob-dot" style="width:30px;height:30px;border-radius:9999px; display:flex; align-items:center; justify-content:center; background:var(--surface-container-highest); color:var(--on-surface-variant); font-weight:800; font-size:13px;">6</div>
+            <div style="font-size:10px; text-align:center; margin-top:6px; color:var(--on-surface-variant);">E-podpis</div>
+          </div>
+          <div style="flex:1; height:2px; background:var(--outline-variant); margin-top:15px;"></div>
+          <div class="ob-step" data-step="7" style="display:flex; flex-direction:column; align-items:center; min-width:96px;">
+            <div class="ob-dot" style="width:30px;height:30px;border-radius:9999px; display:flex; align-items:center; justify-content:center; background:var(--surface-container-highest); color:var(--on-surface-variant); font-weight:800; font-size:13px;">7</div>
+            <div style="font-size:10px; text-align:center; margin-top:6px; color:var(--on-surface-variant);">Aktywacja</div>
+          </div>
+        </div>
+
+        <!-- Step detail list -->
+        <div style="padding:24px 28px 28px;">
+          <div style="display:flex; flex-direction:column; gap:10px;">
+
+            <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--emerald-bright);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--emerald-bright);">task_alt</span>
+                <div><div style="font-weight:700;">Dane rejestrowe pobrane</div><div style="font-size:12px; color:var(--on-surface-variant);">GUS, CEIDG, KRS, Biała Lista VAT — zgodne</div></div>
+              </div>
+              <span class="badge badge-low">GOTOWE</span>
+            </div>
+
+            <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--emerald-bright);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--emerald-bright);">shield</span>
+                <div><div style="font-weight:700;">Ocena ryzyka AML / KYC</div><div style="font-size:12px; color:var(--on-surface-variant);">Wynik: NISKIE • brak dopasowań sankcyjnych/PEP • przegląd za 24 mies.</div></div>
+              </div>
+              <span class="badge badge-low">GOTOWE</span>
+            </div>
+
+            <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--cyan-bright);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--cyan-bright);">description</span>
+                <div><div style="font-weight:700;">Umowa o prowadzenie księgowości</div><div style="font-size:12px; color:var(--on-surface-variant);">Wygenerowano z szablonu • dane klienta uzupełnione automatycznie</div></div>
+              </div>
+              <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.35);">WYGENEROWANO</span>
+            </div>
+
+            <div class="msc-list-row hairline ob-pending" data-req="4" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; opacity:.5;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--on-surface-variant);">privacy_tip</span>
+                <div><div style="font-weight:700;">Klauzula informacyjna RODO</div><div style="font-size:12px; color:var(--on-surface-variant);">Zgoda na przetwarzanie danych osobowych</div></div>
+              </div>
+              <span class="badge badge-neutral">OCZEKUJE</span>
+            </div>
+
+            <div class="msc-list-row hairline ob-pending" data-req="5" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; opacity:.5;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--on-surface-variant);">gavel</span>
+                <div><div style="font-weight:700;">Pełnomocnictwa: UPL-1 (US) i PEL (ZUS)</div><div style="font-size:12px; color:var(--on-surface-variant);">Wymagają podpisu kwalifikowanego — do podpisu skierowane do Anny Kowalskiej (uprawnienie: umowy i pełnomocnictwa)</div></div>
+              </div>
+              <span class="badge badge-neutral">OCZEKUJE</span>
+            </div>
+
+            <div class="msc-list-row ob-pending" data-req="6" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; opacity:.5;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--on-surface-variant);">edit_document</span>
+                <div><div style="font-weight:700;">Wysyłka pakietu do e-podpisu klienta</div><div style="font-size:12px; color:var(--on-surface-variant);">Umowa + RODO + pełnomocnictwa w jednej wysyłce</div></div>
+              </div>
+              <span class="badge badge-neutral">OCZEKUJE</span>
+            </div>
+
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:22px; flex-wrap:wrap; gap:12px;">
+            <div style="font-size:12px; color:var(--on-surface-variant);" id="onboardingHint">Wygeneruj RODO i pełnomocnictwa, aby przygotować pełny pakiet do podpisu.</div>
+            <div style="display:flex; gap:10px;">
+              <button class="icon-btn hairline" style="width:auto; padding:0 20px; height:42px; border-radius:14px; font-size:13px; font-weight:700; color:var(--cyan-bright);" id="generateDocsBtn">Generuj RODO i pełnomocnictwa</button>
+              <button class="glow-btn" style="padding:0 22px; height:42px; font-size:13px; display:none;" id="sendPackageBtn">Wyślij pakiet do e-podpisu</button>
+              <button class="glow-btn" style="padding:0 22px; height:42px; font-size:13px; display:none; background:linear-gradient(135deg,var(--emerald-bright),var(--emerald)); color:#00361b;" id="activateClientBtn">Aktywuj klienta w systemie</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client detail panel -->
+      <div class="glass" style="padding:0; margin-top:20px; overflow:hidden;">
+        <div style="padding:22px 28px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div id="clientDetailName" style="font-size:20px; font-weight:800;">Stellar Dynamics Sp. z o.o.</div>
+            <div style="font-size:12px; color:var(--on-surface-variant);">NIP: <span id="clientDetailNip">521-00-12-345</span> • Opiekun: <span id="clientDetailOwner">Anna Kowalska</span> • Plan: <span id="clientDetailPlan">Premium</span></div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <span class="nav-item client-tab active" data-ctab="przeglad" style="padding:8px 16px; margin:0;">Przegląd</span>
+            <span class="nav-item client-tab" data-ctab="aml" style="padding:8px 16px; margin:0;">AML</span>
+            <span class="nav-item client-tab" data-ctab="dokumenty" style="padding:8px 16px; margin:0;">Dokumenty</span>
+            <span class="nav-item client-tab" data-ctab="zadania" style="padding:8px 16px; margin:0;">Zadania</span>
+          </div>
+        </div>
+
+        <div style="padding:26px 28px;">
+          <div class="ctab-panel" id="ctab-przeglad">
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
+              <div class="hairline" style="border-radius:14px; padding:16px;"><div class="eyebrow">Forma prawna</div><div style="font-weight:700; margin-top:4px;">Sp. z o.o.</div></div>
+              <div class="hairline" style="border-radius:14px; padding:16px;"><div class="eyebrow">Data rejestracji</div><div style="font-weight:700; margin-top:4px;">14.03.2019</div></div>
+              <div class="hairline" style="border-radius:14px; padding:16px;"><div class="eyebrow">PKD</div><div style="font-weight:700; margin-top:4px;">62.01.Z</div></div>
+              <div class="hairline" style="border-radius:14px; padding:16px;"><div class="eyebrow">Status VAT</div><div style="font-weight:700; margin-top:4px; color:var(--emerald-bright);">Czynny podatnik</div></div>
+            </div>
+            <div style="margin-top:18px;"><div class="eyebrow" style="margin-bottom:8px;">Health Score</div>
+              <div class="bar-track"><div class="bar-fill" style="width:88%; background:var(--emerald-bright);"></div></div>
+              <div style="font-size:12px; color:var(--on-surface-variant); margin-top:6px;">88/100 — brak sygnałów ostrzegawczych, płatności terminowe, pełna dokumentacja.</div>
+            </div>
+          </div>
+
+          <div class="ctab-panel" id="ctab-aml" style="display:none;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+              <div class="hairline" style="border-radius:14px; padding:16px;">
+                <div class="eyebrow">Ocena ryzyka klienta</div>
+                <div style="font-size:15px; font-weight:700; margin-top:6px; color:var(--emerald-bright);">NISKIE — przegląd co 24 mies.</div>
+              </div>
+              <div class="hairline" style="border-radius:14px; padding:16px;">
+                <div class="eyebrow">Sankcje / PEP</div>
+                <div style="font-size:15px; font-weight:700; margin-top:6px; color:var(--emerald-bright);">Brak dopasowań</div>
+              </div>
+              <div class="hairline" style="border-radius:14px; padding:16px; grid-column:1/-1;">
+                <div class="eyebrow" style="margin-bottom:8px;">Beneficjenci rzeczywiści</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                  <span>Marek Zieliński — 62% udziałów</span>
+                  <span style="color:var(--cyan-bright); cursor:pointer; font-size:12px;">Sprawdź w CRBR ↗</span>
+                </div>
+              </div>
+            </div>
+            <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:38px; border-radius:12px; margin-top:16px; font-size:12px; font-weight:700; color:var(--cyan-bright);">Uruchom ponowną weryfikację</button>
+          </div>
+
+          <div class="ctab-panel" id="ctab-dokumenty" style="display:none; font-size:13px; color:var(--on-surface-variant);">
+            Umowa o prowadzenie księgowości, RODO, pełnomocnictwo UPL-1 — 3 dokumenty na koncie klienta.
+          </div>
+          <div class="ctab-panel" id="ctab-zadania" style="display:none; font-size:13px; color:var(--on-surface-variant);">
+            Zamknięcie miesiąca (w toku), Deklaracja VAT-7 (termin: 25.09), Aktualizacja CRBR (zaplanowane).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-aml-risk">
+      <div class="eyebrow">Analiza Ryzyka</div>
+      <h1 class="section-title" style="margin:4px 0 24px;">Przegląd Ryzyka AML</h1>
+
+      <div style="display:grid; grid-template-columns:1fr 1.4fr; gap:20px;">
+        <div class="glass" style="padding:28px; text-align:center;">
+          <div class="eyebrow">Ogólny Wskaźnik Ryzyka</div>
+          <svg width="200" height="200" viewBox="0 0 200 200" style="margin:16px 0;">
+            <circle cx="100" cy="100" r="82" fill="none" stroke="var(--surface-container-highest)" stroke-width="16"/>
+            <circle cx="100" cy="100" r="82" fill="none" stroke="var(--emerald-bright)" stroke-width="16" stroke-linecap="round"
+              stroke-dasharray="515" stroke-dashoffset="82.4" transform="rotate(-90 100 100)"/>
+            <text x="100" y="95" text-anchor="middle" font-size="46" font-weight="800" fill="var(--on-surface)" font-family="Inter">84</text>
+            <text x="100" y="122" text-anchor="middle" font-size="13" fill="var(--emerald-bright)" font-family="Inter" font-weight="700">STABILNY</text>
+          </svg>
+          <div style="display:flex; justify-content:space-around; border-top:1px solid rgba(255,255,255,0.08); padding-top:16px;">
+            <div><div style="font-size:11px; color:var(--on-surface-variant);">MIN</div><div style="font-weight:700; font-size:18px;">12</div></div>
+            <div><div style="font-size:11px; color:var(--on-surface-variant);">MAX</div><div style="font-weight:700; font-size:18px; color:var(--magenta-bright);">98</div></div>
+          </div>
+        </div>
+
+        <div class="glass" style="padding:28px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <h3 style="font-size:18px; font-weight:700; margin:0; display:flex; align-items:center; gap:8px;">
+              <span class="material-symbols-outlined" style="color:var(--cyan-bright);">sensors</span> Monitorowane Transakcje Klientów
+            </h3>
+            <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.35);">● NA ŻYWO</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+              <div><div style="font-weight:700;">TXN-8992-ALPHA</div><div style="font-size:12px; color:var(--on-surface-variant);">Global Nexus Corp • 0.04s temu</div></div>
+              <span class="badge badge-critical">KRYTYCZNE</span>
+            </div>
+            <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+              <div><div style="font-weight:700;">TXN-4421-BETA</div><div style="font-size:12px; color:var(--on-surface-variant);">Synapse Logistics • 1.2s temu</div></div>
+              <span class="badge badge-elevated">PODWYŻSZONE</span>
+            </div>
+            <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+              <div><div style="font-weight:700;">TXN-1104-ZETA</div><div style="font-size:12px; color:var(--on-surface-variant);">AeroSpace Def • 4.8s temu</div></div>
+              <span class="badge badge-low">NISKIE</span>
+            </div>
+            <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+              <div><div style="font-weight:700;">TXN-0992-DELTA</div><div style="font-size:12px; color:var(--on-surface-variant);">Quantum Financial • 12.1s temu</div></div>
+              <span class="badge badge-low">NISKIE</span>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:16px;">
+            <span style="font-size:13px; color:var(--cyan-bright); cursor:pointer; font-weight:600;">ZOBACZ WSZYSTKICH KLIENTÓW →</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-top:20px;">
+        <div class="glass" style="padding:24px;">
+          <span class="material-symbols-outlined" style="color:var(--cyan-bright);">fingerprint</span>
+          <div style="font-size:30px; font-weight:800; margin-top:8px;">12.4k</div>
+          <div class="eyebrow" style="margin-top:4px;">Tożsamości zweryfikowanych</div>
+        </div>
+        <div class="glass" style="padding:24px;">
+          <span class="material-symbols-outlined" style="color:var(--emerald-bright);">verified</span>
+          <div style="font-size:30px; font-weight:800; margin-top:8px;">99.8%</div>
+          <div class="eyebrow" style="margin-top:4px;">Wskaźnik zgodności</div>
+        </div>
+        <div class="glass" style="padding:24px; border-color:rgba(255,75,137,0.35);">
+          <span class="material-symbols-outlined" style="color:var(--magenta-bright);">travel_explore</span>
+          <div style="font-size:30px; font-weight:800; margin-top:8px; color:var(--magenta-bright);">4</div>
+          <div class="eyebrow" style="margin-top:4px;">Śledztwa w toku</div>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:28px; margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:8px;">
+          <h3 style="margin:0; font-size:18px; font-weight:700;">Scoring Ryzyka Klienta</h3>
+          <span style="font-size:11px; color:var(--on-surface-variant);">Ustawa AML art. 27 — ocena ogólna aktualizowana min. co 2 lata</span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:12px;">
+          <div class="hairline" style="border-radius:12px; padding:14px; text-align:center;"><div class="eyebrow" style="font-size:10px;">Forma / struktura</div><div style="font-size:20px; font-weight:800; margin-top:6px;">1 pkt</div></div>
+          <div class="hairline" style="border-radius:12px; padding:14px; text-align:center;"><div class="eyebrow" style="font-size:10px;">Branża</div><div style="font-size:20px; font-weight:800; margin-top:6px;">0 pkt</div></div>
+          <div class="hairline" style="border-radius:12px; padding:14px; text-align:center;"><div class="eyebrow" style="font-size:10px;">Kraj ryzyka</div><div style="font-size:20px; font-weight:800; margin-top:6px;">0 pkt</div></div>
+          <div class="hairline" style="border-radius:12px; padding:14px; text-align:center;"><div class="eyebrow" style="font-size:10px;">Status PEP</div><div style="font-size:20px; font-weight:800; margin-top:6px;">0 pkt</div></div>
+          <div class="hairline" style="border-radius:12px; padding:14px; text-align:center; border-color:rgba(0,226,139,0.4);"><div class="eyebrow" style="font-size:10px;">Suma</div><div style="font-size:20px; font-weight:800; margin-top:6px; color:var(--emerald-bright);">NISKIE</div></div>
+        </div>
+        <div style="font-size:12px; color:var(--on-surface-variant); margin-top:12px;">Niskie ryzyko → przegląd co 24 mies. • Średnie → 12 mies. • Wysokie → 6 mies. + wzmożone środki bezpieczeństwa.</div>
+      </div>
+
+      <div class="glass" style="padding:28px; margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <h3 style="margin:0; font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px;">
+            <span class="material-symbols-outlined" style="color:var(--cyan-bright);">campaign</span> Kanał Zgłoszeń Sygnalistów
+          </h3>
+          <span class="badge badge-neutral">art. 53 ust. 1 • rejestr 3 lata</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div><div style="font-weight:700;">Zgłoszenie #041</div><div style="font-size:12px; color:var(--on-surface-variant);">Wpłynęło 18.08 • kanał zgłaszam.org</div></div>
+            <span class="badge badge-elevated">W TOKU</span>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div><div style="font-weight:700;">Zgłoszenie #040</div><div style="font-size:12px; color:var(--on-surface-variant);">Wpłynęło 02.07 • rozpatrzone</div></div>
+            <span class="badge badge-low">ZAMKNIĘTE</span>
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--on-surface-variant); margin-top:12px;">Archiwum AML przechowywane min. 5 lat na potrzeby kontroli GIIF.</div>
+      </div>
+
+      <div class="glass" style="padding:28px; margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+          <h3 style="margin:0; font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px;">
+            <span class="material-symbols-outlined" style="color:var(--emerald-bright);">school</span> Szkolenia AML Pracowników
+          </h3>
+          <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.35);">Dostawca: zgłaszam.org</span>
+        </div>
+        <div style="font-size:12px; color:var(--on-surface-variant); margin-bottom:18px;">Ustawa AML art. 52 — obowiązkowe szkolenia okresowe dla osób wykonujących obowiązki instytucji obowiązanej. Szkolenia online z certyfikatem realizowane przez zgłaszam.org trafiają tu automatycznie po ukończeniu.</div>
+
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:18px;">
+          <div class="hairline" style="border-radius:12px; padding:14px;"><div class="eyebrow">Przeszkoleni</div><div style="font-size:22px; font-weight:800; margin-top:4px; color:var(--emerald-bright);">3 / 4</div></div>
+          <div class="hairline" style="border-radius:12px; padding:14px;"><div class="eyebrow">Wygasa w 60 dni</div><div style="font-size:22px; font-weight:800; margin-top:4px; color:#ffb140;">1</div></div>
+          <div class="hairline" style="border-radius:12px; padding:14px;"><div class="eyebrow">Brak szkolenia</div><div style="font-size:22px; font-weight:800; margin-top:4px; color:var(--magenta-bright);">1</div></div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:32px;height:32px;border-radius:9999px;background:var(--surface-container-highest);"></div>
+              <div><div style="font-weight:700;">Anna Kowalska</div><div style="font-size:12px; color:var(--on-surface-variant);">Ukończono: 14.03.2026 • ważne do 14.03.2028</div></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="badge badge-low">AKTUALNE</span>
+              <span class="material-symbols-outlined" style="font-size:18px; color:var(--cyan-bright); cursor:pointer;" title="Pobierz certyfikat">download</span>
+            </div>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:32px;height:32px;border-radius:9999px;background:var(--surface-container-highest);"></div>
+              <div><div style="font-weight:700;">Alex Wójcik</div><div style="font-size:12px; color:var(--on-surface-variant);">Ukończono: 02.06.2026 • ważne do 02.06.2028</div></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="badge badge-low">AKTUALNE</span>
+              <span class="material-symbols-outlined" style="font-size:18px; color:var(--cyan-bright); cursor:pointer;" title="Pobierz certyfikat">download</span>
+            </div>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid #ffb140;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:32px;height:32px;border-radius:9999px;background:var(--surface-container-highest);"></div>
+              <div><div style="font-weight:700;">Marta Zielińska</div><div style="font-size:12px; color:var(--on-surface-variant);">Ukończono: 28.09.2024 • wygasa: 28.09.2026</div></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="badge badge-elevated">WYGASA WKRÓTCE</span>
+              <span class="material-symbols-outlined" style="font-size:18px; color:var(--cyan-bright); cursor:pointer;" title="Pobierz certyfikat">download</span>
+            </div>
+          </div>
+          <div class="msc-list-row" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--magenta-bright);">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:32px;height:32px;border-radius:9999px;background:var(--surface-container-highest);"></div>
+              <div><div style="font-weight:700;">Jan Nowak</div><div style="font-size:12px; color:var(--on-surface-variant);">Brak ukończonego szkolenia AML</div></div>
+            </div>
+            <span class="badge badge-critical">DO ZROBIENIA</span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;">
+          <button class="glow-btn" style="padding:10px 20px; font-size:13px; display:flex; align-items:center; gap:8px;">
+            <span class="material-symbols-outlined" style="font-size:16px;">open_in_new</span> Zapisz zespół na szkolenie (zgłaszam.org)
+          </button>
+          <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:42px; border-radius:14px; font-size:13px; font-weight:700; color:var(--cyan-bright);">Dodaj certyfikat ręcznie</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ KALENDARZ ============ -->
+    <section class="page" id="page-kalendarz">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 20px;">
+        <div>
+          <div class="eyebrow">Terminy Podatkowe, ZUS i Wewnętrzne</div>
+          <h1 class="section-title" style="margin:4px 0 0;">Kalendarz</h1>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <span class="nav-item cal-tab active" data-caltab="terminy" style="padding:8px 18px; margin:0;">Terminy</span>
+          <span class="nav-item cal-tab" data-caltab="radar" style="padding:8px 18px; margin:0;">Radar Zmian</span>
+        </div>
+      </div>
+
+      <!-- ===== TERMINY ===== -->
+      <div class="cal-panel" id="cal-terminy">
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px;">
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Dziś</div><div style="font-size:26px; font-weight:800; margin-top:4px; color:var(--magenta-bright);">3</div></div>
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Ten tydzień</div><div style="font-size:26px; font-weight:800; margin-top:4px;">11</div></div>
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Wewnętrzne (biuro)</div><div style="font-size:26px; font-weight:800; margin-top:4px;">4</div></div>
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Zaległe</div><div style="font-size:26px; font-weight:800; margin-top:4px; color:var(--magenta-bright);">1</div></div>
+      </div>
+
+      <div class="glass" style="padding:28px;">
+        <div class="eyebrow" style="margin-bottom:14px;">DZIŚ — 24 SIERPNIA</div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:22px;">
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--magenta-bright);">
+            <div><div style="font-weight:700;">Deklaracja VAT-7 — Nova Corp</div><div style="font-size:12px; color:var(--on-surface-variant);">Opiekun: Jan Nowak</div></div>
+            <span class="badge badge-critical">DZIŚ</span>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--magenta-bright);">
+            <div><div style="font-weight:700;">Składka ZUS — Nebula Systems</div><div style="font-size:12px; color:var(--on-surface-variant);">Opiekun: Alex Wójcik</div></div>
+            <span class="badge badge-critical">DZIŚ</span>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px; border-left:3px solid var(--cyan-bright);">
+            <div><div style="font-weight:700;">Zamknięcie miesiąca — zespół Alpha</div><div style="font-size:12px; color:var(--on-surface-variant);">Termin wewnętrzny biura</div></div>
+            <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.35);">WEWNĘTRZNE</span>
+          </div>
+        </div>
+
+        <div class="eyebrow" style="margin-bottom:14px;">NAJBLIŻSZE DNI</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div><div style="font-weight:700;">Zaliczka PIT — Stellar Dynamics</div><div style="font-size:12px; color:var(--on-surface-variant);">27 sierpnia • Anna Kowalska</div></div>
+            <span class="badge badge-elevated">2 DNI</span>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div><div style="font-weight:700;">JPK_V7 — wysyłka zbiorcza</div><div style="font-size:12px; color:var(--on-surface-variant);">25 sierpnia • cały zespół</div></div>
+            <span class="badge badge-elevated">TERMIN USTAWOWY</span>
+          </div>
+          <div class="msc-list-row" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div><div style="font-weight:700;">Aktualizacja CRBR — Quantum Financial</div><div style="font-size:12px; color:var(--on-surface-variant);">2 września • Anna Kowalska</div></div>
+            <span class="badge badge-neutral">7 DNI</span>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- ===== RADAR ZMIAN ===== -->
+      <div class="cal-panel" id="cal-radar" style="display:none;">
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px;">
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Nowe w tym miesiącu</div><div style="font-size:26px; font-weight:800; margin-top:4px;">6</div></div>
+        <div class="glass" style="padding:20px; border-color:rgba(255,75,137,0.3);"><div class="eyebrow">Wymagają akcji</div><div style="font-size:26px; font-weight:800; margin-top:4px; color:var(--magenta-bright);">2</div></div>
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Dotkniętych klientów</div><div style="font-size:26px; font-weight:800; margin-top:4px;">47</div></div>
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Ostatnia aktualizacja</div><div style="font-size:16px; font-weight:700; margin-top:8px;">dziś, 07:30</div></div>
+      </div>
+
+      <div class="glass" style="padding:28px;">
+        <div style="display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;">
+          <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.35); cursor:pointer;">WSZYSTKIE</span>
+          <span class="badge badge-neutral" style="cursor:pointer;">WYMAGAJĄ AKCJI</span>
+          <span class="badge badge-neutral" style="cursor:pointer;">WYSŁANO INFO</span>
+          <span class="badge badge-neutral" style="cursor:pointer;">ARCHIWUM</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="msc-list-row hairline" style="padding:16px; border-radius:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">KSEF</span>
+                <span style="font-weight:700;">Obowiązkowy KSeF — nowy harmonogram wdrożenia</span>
+              </div>
+              <span class="badge badge-critical">WYMAGA AKCJI</span>
+            </div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+              <span>Dotyczy 80 klientów • dodano 22.08</span>
+              <span style="color:var(--cyan-bright); cursor:pointer; font-weight:600;">Wyślij info do klientów →</span>
+            </div>
+          </div>
+          <div class="msc-list-row hairline" style="padding:16px; border-radius:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="badge badge-elevated">RYCZAŁT</span>
+                <span style="font-weight:700;">Zmiana stawek ryczałtu dla wybranych branż</span>
+              </div>
+              <span class="badge badge-critical">WYMAGA AKCJI</span>
+            </div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+              <span>Dotyczy 12 klientów na ryczałcie • dodano 20.08</span>
+              <span style="color:var(--cyan-bright); cursor:pointer; font-weight:600;">Wyślij info do klientów →</span>
+            </div>
+          </div>
+          <div class="msc-list-row hairline" style="padding:16px; border-radius:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="badge badge-neutral">JPK CIT</span>
+                <span style="font-weight:700;">Doprecyzowanie struktury logicznej JPK CIT</span>
+              </div>
+              <span class="badge badge-low">WYSŁANO INFO</span>
+            </div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-top:8px;">Dotyczy 9 klientów • dodano 12.08</div>
+          </div>
+          <div class="msc-list-row" style="padding:16px; border-radius:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="badge badge-neutral">ZUS</span>
+                <span style="font-weight:700;">Nowe wzory formularzy zgłoszeniowych ZUS</span>
+              </div>
+              <span class="badge badge-low">WYSŁANO INFO</span>
+            </div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-top:8px;">Dotyczy wszystkich klientów • dodano 05.08</div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- ============ DOKUMENTY ============ -->
+    <!-- ============ DELEGACJE ============ -->
+    <section class="page" id="page-delegacje">
+      <div class="eyebrow">Integracja z DelegoApp</div>
+      <h1 class="section-title" style="margin:4px 0 16px;">Delegacje</h1>
+
+      <div class="glass" style="padding:18px 26px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; border-color:rgba(0,226,139,0.3);">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(0,226,139,0.12); border:1px solid rgba(0,226,139,0.35); display:flex; align-items:center; justify-content:center; position:relative;">
+            <span class="material-symbols-outlined" style="color:var(--emerald-bright);">flight_takeoff</span>
+            <span style="position:absolute; top:-3px; right:-3px; width:11px; height:11px; border-radius:9999px; background:var(--emerald-bright); border:2px solid var(--surface);"></span>
+          </div>
+          <div>
+            <div style="font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;">
+              Połączenie z DelegoApp
+              <span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);">AKTYWNE</span>
+            </div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Ostatnia synchronizacja: dziś, 10:12 • 8 delegacji w kolejce • śr. czas odpowiedzi API: 0.6s</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:38px; border-radius:12px; font-size:12px; font-weight:700;">Synchronizuj teraz</button>
+          <button class="glow-btn" style="padding:0 18px; height:38px; font-size:12px; display:flex; align-items:center; gap:6px;"><span class="material-symbols-outlined" style="font-size:16px;">open_in_new</span> Otwórz DelegoApp</button>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px;">
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Delegacje w toku</div><div style="font-size:26px; font-weight:800; margin-top:4px;">6</div></div>
+        <div class="glass" style="padding:20px; border-color:rgba(255,177,64,0.3);"><div class="eyebrow">Do rozliczenia</div><div style="font-size:26px; font-weight:800; margin-top:4px; color:#ffb140;">4</div></div>
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Łączny koszt (sierpień)</div><div style="font-size:26px; font-weight:800; margin-top:4px;">12 480 zł</div></div>
+        <div class="glass" style="padding:20px;"><div class="eyebrow">Zaliczki wypłacone</div><div style="font-size:26px; font-weight:800; margin-top:4px; color:var(--emerald-bright);">8 200 zł</div></div>
+      </div>
+
+      <div class="glass" style="padding:0; overflow:hidden;">
+        <div style="padding:20px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.07); flex-wrap:wrap; gap:10px;">
+          <h3 style="margin:0; font-size:16px; font-weight:700;">Delegacje zsynchronizowane z DelegoApp</h3>
+          <span style="font-size:12px; color:var(--on-surface-variant);">Wnioski i rozliczenia tworzone są w DelegoApp — tutaj widzisz statusy i kwoty na bieżąco.</span>
+        </div>
+        <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+          <thead>
+            <tr style="text-align:left; color:var(--on-surface-variant); font-size:11px; text-transform:uppercase; letter-spacing:.04em;">
+              <th style="padding:10px 16px; font-weight:600;">Pracownik</th>
+              <th style="padding:10px 12px; font-weight:600;">Klient / Cel podróży</th>
+              <th style="padding:10px 12px; font-weight:600;">Termin</th>
+              <th style="padding:10px 12px; font-weight:600;">Status w DelegoApp</th>
+              <th style="padding:10px 12px; font-weight:600;">Kwota</th>
+              <th style="padding:10px 16px; font-weight:600;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="msc-list-row hairline">
+              <td style="padding:14px 16px; font-weight:700;">Anna Kowalska</td>
+              <td style="padding:14px 12px;">Quantum Financial — kontrola podatkowa (Kraków)</td>
+              <td style="padding:14px 12px; color:var(--on-surface-variant);">02–03.09.2026</td>
+              <td style="padding:14px 12px;"><span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">W TRAKCIE ROZLICZENIA</span></td>
+              <td style="padding:14px 12px; font-weight:700;">450,00 zł</td>
+              <td style="padding:14px 16px;"><span class="material-symbols-outlined" style="font-size:18px; color:var(--on-surface-variant); cursor:pointer;">open_in_new</span></td>
+            </tr>
+            <tr class="msc-list-row hairline">
+              <td style="padding:14px 16px; font-weight:700;">Jan Nowak</td>
+              <td style="padding:14px 12px;">Nova Corp — audyt klienta (Wrocław)</td>
+              <td style="padding:14px 12px; color:var(--on-surface-variant);">28–29.08.2026</td>
+              <td style="padding:14px 12px;"><span class="badge badge-elevated">OCZEKUJE NA AKCEPTACJĘ</span></td>
+              <td style="padding:14px 12px; font-weight:700;">380,00 zł</td>
+              <td style="padding:14px 16px;"><span class="material-symbols-outlined" style="font-size:18px; color:var(--on-surface-variant); cursor:pointer;">open_in_new</span></td>
+            </tr>
+            <tr class="msc-list-row hairline">
+              <td style="padding:14px 16px; font-weight:700;">Alex Wójcik</td>
+              <td style="padding:14px 12px;">Szkolenie KSeF (Warszawa)</td>
+              <td style="padding:14px 12px; color:var(--on-surface-variant);">25.08.2026</td>
+              <td style="padding:14px 12px;"><span class="badge badge-low">ROZLICZONA</span></td>
+              <td style="padding:14px 12px; font-weight:700;">210,00 zł</td>
+              <td style="padding:14px 16px;"><span class="material-symbols-outlined" style="font-size:18px; color:var(--on-surface-variant); cursor:pointer;">open_in_new</span></td>
+            </tr>
+            <tr class="msc-list-row">
+              <td style="padding:14px 16px; font-weight:700;">Anna Kowalska</td>
+              <td style="padding:14px 12px;">Stellar Dynamics — spotkanie z klientem (Gdańsk)</td>
+              <td style="padding:14px 12px; color:var(--on-surface-variant);">12.08.2026</td>
+              <td style="padding:14px 12px;"><span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">ZAAKCEPTOWANA</span></td>
+              <td style="padding:14px 12px; font-weight:700;">320,00 zł</td>
+              <td style="padding:14px 16px;"><span class="material-symbols-outlined" style="font-size:18px; color:var(--on-surface-variant); cursor:pointer;">open_in_new</span></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div style="font-size:12px; color:var(--on-surface-variant); margin-top:14px;">Wnioski o delegację, zaliczki i rozliczenie kosztów podróży pracownik obsługuje bezpośrednio w DelegoApp (web i mobilnie) — Solidus pobiera zatwierdzone rozliczenia i księguje je automatycznie. Ustawienia połączenia i klucz API znajdziesz w <span style="color:var(--cyan-bright); cursor:pointer; font-weight:600;" data-goto="ustawienia" data-subtab-id="setTabIntegracje">Ustawieniach → Integracje</span>.</div>
+    </section>
+
+    <!-- ============ COMMUNICATIONS ============ -->
+    <section class="page" id="page-communications">
+      <div class="eyebrow">Wysyłki i Wiadomości</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin:4px 0 20px;">
+        <h1 class="section-title" style="margin:0;">Komunikacja</h1>
+        <div style="display:flex; gap:8px;">
+          <span class="nav-item comm-tab active" data-ctab2="wysylki" style="padding:8px 18px; margin:0;">Wysyłki Podatkowe</span>
+          <span class="nav-item comm-tab" data-ctab2="wiadomosci" style="padding:8px 18px; margin:0;">Wiadomości</span>
+        </div>
+      </div>
+
+      <!-- ===== WYSYŁKI PODATKOWE ===== -->
+      <div class="comm-panel" id="comm-wysylki">
+
+        <div class="glass" style="padding:22px 26px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:48px;height:48px;border-radius:14px;background:rgba(0,219,231,0.12); border:1px solid rgba(0,219,231,0.3); display:flex; align-items:center; justify-content:center;">
+              <span class="material-symbols-outlined" style="color:var(--cyan-bright);">upload_file</span>
+            </div>
+            <div>
+              <div style="font-weight:700; font-size:14px;">Ostatni import: <span style="color:var(--on-surface-variant); font-weight:500;">rozliczenia_sierpien_2026.xlsx</span></div>
+              <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">dziś, 08:14 • 80 wierszy • <span style="color:var(--emerald-bright);">77 dopasowanych</span> • <span style="color:var(--magenta-bright);">3 błędy dopasowania NIP</span></div>
+            </div>
+          </div>
+          <button class="glow-btn" style="padding:11px 22px; font-size:13px; display:flex; align-items:center; gap:8px;">
+            <span class="material-symbols-outlined" style="font-size:18px;">file_upload</span> Importuj plik XLS
+          </button>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start;">
+          <div class="glass" style="padding:0; overflow:hidden;">
+            <div style="padding:16px 22px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.07); flex-wrap:wrap; gap:10px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--on-surface-variant); cursor:pointer;">
+                <input type="checkbox" id="selectAllRows" checked style="accent-color:var(--cyan-bright); width:15px; height:15px;"/> Zaznacz wszystkie
+              </label>
+              <button class="glow-btn" style="padding:8px 18px; font-size:12px;" id="sendSelectedBtn">Wyślij zaznaczone (<span id="selCount">77</span>)</button>
+            </div>
+            <div style="overflow-x:auto; max-height:480px; overflow-y:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <thead>
+                <tr style="text-align:left; color:var(--on-surface-variant); font-size:11px; text-transform:uppercase; letter-spacing:.04em; position:sticky; top:0; background:var(--surface-container);">
+                  <th style="padding:10px 16px; font-weight:600;"></th>
+                  <th style="padding:10px 12px; font-weight:600;">Klient</th>
+                  <th style="padding:10px 12px; font-weight:600;">Typ</th>
+                  <th style="padding:10px 12px; font-weight:600;">Kwota</th>
+                  <th style="padding:10px 12px; font-weight:600;">Termin</th>
+                  <th style="padding:10px 16px; font-weight:600;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="msc-list-row hairline">
+                  <td style="padding:12px 16px;"><input type="checkbox" checked style="accent-color:var(--cyan-bright); width:15px; height:15px;"/></td>
+                  <td style="padding:12px; font-weight:700;">Stellar Dynamics</td>
+                  <td style="padding:12px;"><span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">VAT</span></td>
+                  <td style="padding:12px; font-weight:700;">1 850,00 zł</td>
+                  <td style="padding:12px; color:var(--on-surface-variant);">25.08.2026</td>
+                  <td style="padding:12px 16px;"><span class="badge badge-neutral">DO WYSŁANIA</span></td>
+                </tr>
+                <tr class="msc-list-row hairline">
+                  <td style="padding:12px 16px;"><input type="checkbox" checked style="accent-color:var(--cyan-bright); width:15px; height:15px;"/></td>
+                  <td style="padding:12px; font-weight:700;">Nova Corp</td>
+                  <td style="padding:12px;"><span class="badge" style="background:rgba(255,177,64,0.14); color:#ffb140; border:1px solid rgba(255,177,64,0.35);">ZUS</span></td>
+                  <td style="padding:12px; font-weight:700;">1 200,00 zł</td>
+                  <td style="padding:12px; color:var(--on-surface-variant);">24.08.2026</td>
+                  <td style="padding:12px 16px;"><span class="badge badge-neutral">DO WYSŁANIA</span></td>
+                </tr>
+                <tr class="msc-list-row hairline">
+                  <td style="padding:12px 16px;"><input type="checkbox" checked style="accent-color:var(--cyan-bright); width:15px; height:15px;"/></td>
+                  <td style="padding:12px; font-weight:700;">Quantum Financial</td>
+                  <td style="padding:12px;"><span class="badge badge-low">PIT</span></td>
+                  <td style="padding:12px; font-weight:700;">1 450,00 zł</td>
+                  <td style="padding:12px; color:var(--on-surface-variant);">27.08.2026</td>
+                  <td style="padding:12px 16px;"><span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.3);">WYSŁANO</span></td>
+                </tr>
+                <tr class="msc-list-row hairline">
+                  <td style="padding:12px 16px;"><input type="checkbox" checked style="accent-color:var(--cyan-bright); width:15px; height:15px;"/></td>
+                  <td style="padding:12px; font-weight:700;">Nebula Systems</td>
+                  <td style="padding:12px;"><span class="badge" style="background:rgba(255,75,137,0.14); color:var(--magenta-bright); border:1px solid rgba(255,75,137,0.3);">CIT</span></td>
+                  <td style="padding:12px; font-weight:700;">1 690,00 zł</td>
+                  <td style="padding:12px; color:var(--on-surface-variant);">25.08.2026</td>
+                  <td style="padding:12px 16px;"><span class="badge badge-neutral">DO WYSŁANIA</span></td>
+                </tr>
+                <tr class="msc-list-row" style="opacity:.6;">
+                  <td style="padding:12px 16px;"><input type="checkbox" disabled style="width:15px; height:15px;"/></td>
+                  <td style="padding:12px; font-weight:700;">NIP 998-11-22-333 <span style="font-weight:400; color:var(--on-surface-variant);">(nierozpoznany)</span></td>
+                  <td style="padding:12px;"><span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">VAT</span></td>
+                  <td style="padding:12px; font-weight:700;">1 320,00 zł</td>
+                  <td style="padding:12px; color:var(--on-surface-variant);">25.08.2026</td>
+                  <td style="padding:12px 16px;"><span class="badge badge-critical">BŁĄD DOPASOWANIA</span></td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+          </div>
+
+          <div class="glass" style="padding:22px;">
+            <h3 style="margin:0 0 4px; font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px;">
+              <span class="material-symbols-outlined" style="color:var(--cyan-bright); font-size:18px;">mail</span> Podgląd szablonu
+            </h3>
+            <div style="font-size:11px; color:var(--on-surface-variant); margin-bottom:12px;">Szablon: Przypomnienie o podatku</div>
+            <div class="hairline" style="border-radius:12px; padding:14px; font-size:12px; line-height:1.6;">
+              <div style="color:var(--on-surface-variant); margin-bottom:6px;">Temat:</div>
+              <div style="font-weight:700; margin-bottom:12px;">Przypomnienie: kwota podatku VAT do zapłaty</div>
+              <div style="color:var(--on-surface-variant); margin-bottom:6px;">Treść:</div>
+              <div>
+                Dzień dobry, <br/><br/>
+                uprzejmie informujemy, że kwota podatku <strong>{typ_podatku}</strong> do zapłaty za bieżący okres wynosi <strong style="color:var(--cyan-bright);">{kwota}</strong>, termin płatności: <strong>{termin}</strong>.<br/><br/>
+                Pozdrawiamy,<br/>Biuro Rachunkowe
+              </div>
+            </div>
+            <button class="icon-btn hairline" style="width:100%; height:36px; border-radius:10px; margin-top:14px; font-size:12px; font-weight:700; color:var(--cyan-bright);">Zmień szablon</button>
+          </div>
+        </div>
+
+        <div class="glass" style="padding:28px; margin-top:20px;">
+          <h3 style="margin:0 0 16px; font-size:16px; font-weight:700;">Historia Wysyłek</h3>
+          <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="text-align:left; color:var(--on-surface-variant); font-size:11px; text-transform:uppercase; letter-spacing:.04em;">
+                <th style="padding:8px 12px; font-weight:600;">Data</th><th style="padding:8px 12px; font-weight:600;">Plik źródłowy</th><th style="padding:8px 12px; font-weight:600;">Wysłane maile</th><th style="padding:8px 12px; font-weight:600;">Dostarczone</th><th style="padding:8px 12px; font-weight:600;">Błędy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="msc-list-row hairline"><td style="padding:12px;">24.07.2026</td><td style="padding:12px;">rozliczenia_lipiec_2026.xlsx</td><td style="padding:12px;">78</td><td style="padding:12px; color:var(--emerald-bright);">78</td><td style="padding:12px; color:var(--on-surface-variant);">0</td></tr>
+              <tr class="msc-list-row"><td style="padding:12px;">24.06.2026</td><td style="padding:12px;">rozliczenia_czerwiec_2026.xlsx</td><td style="padding:12px;">76</td><td style="padding:12px; color:var(--emerald-bright);">74</td><td style="padding:12px; color:var(--magenta-bright);">2</td></tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== WIADOMOŚCI (czat 1:1) ===== -->
+      <div class="comm-panel" id="comm-wiadomosci" style="display:none;">
+      <div class="glass" style="display:grid; grid-template-columns:300px 1fr; overflow:hidden; height:600px;">
+        <div style="border-right:1px solid rgba(255,255,255,0.08); padding:20px; overflow-y:auto;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h4 style="margin:0; font-size:14px; font-weight:700;">Rozmowy</h4>
+            <span class="material-symbols-outlined" style="font-size:18px; color:var(--cyan-bright); cursor:pointer;">add_circle</span>
+          </div>
+          <div id="chatList">
+            <div class="chat-thread msc-list-row active-thread" data-name="Stellar Dynamics" style="padding:12px; border-radius:14px; cursor:pointer; background:rgba(0,219,231,0.08); display:flex; gap:10px; margin-bottom:6px;">
+              <div style="width:38px;height:38px;border-radius:12px;background:var(--surface-container-highest); display:flex;align-items:center;justify-content:center;"><span class="material-symbols-outlined" style="font-size:18px;">apartment</span></div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; justify-content:space-between;"><span style="font-weight:700; font-size:13px;">Stellar Dynamics</span><span style="font-size:10px; color:var(--on-surface-variant);">09:42</span></div>
+                <div style="font-size:12px; color:var(--on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Dokumenty za Q3 przesłane.</div>
+              </div>
+            </div>
+            <div class="chat-thread msc-list-row" data-name="Nova Corp" style="padding:12px; border-radius:14px; cursor:pointer; display:flex; gap:10px; margin-bottom:6px;">
+              <div style="width:38px;height:38px;border-radius:12px;background:var(--surface-container-highest); display:flex;align-items:center;justify-content:center;"><span class="material-symbols-outlined" style="font-size:18px;">rocket_launch</span></div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; justify-content:space-between;"><span style="font-weight:700; font-size:13px;">Nova Corp</span><span style="font-size:10px; color:var(--on-surface-variant);">Wczoraj</span></div>
+                <div style="font-size:12px; color:var(--on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Oczekuje podpisu na umowie...</div>
+              </div>
+            </div>
+            <div class="chat-thread msc-list-row" data-name="Nebula Systems" style="padding:12px; border-radius:14px; cursor:pointer; display:flex; gap:10px;">
+              <div style="width:38px;height:38px;border-radius:12px;background:var(--surface-container-highest); display:flex;align-items:center;justify-content:center;"><span class="material-symbols-outlined" style="font-size:18px;">public</span></div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; justify-content:space-between;"><span style="font-weight:700; font-size:13px;">Nebula Systems</span><span style="font-size:10px; color:var(--on-surface-variant);">12 sie</span></div>
+                <div style="font-size:12px; color:var(--on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Audyt zakończony. Dokumenty...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column;">
+          <div style="padding:18px 24px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div id="chatTitle" style="font-weight:700; font-size:16px;">Stellar Dynamics</div>
+              <div style="font-size:12px; color:var(--emerald-bright); display:flex; align-items:center; gap:4px;"><span style="width:6px;height:6px;border-radius:9999px;background:var(--emerald-bright); display:inline-block;"></span> Połączenie szyfrowane</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <div class="icon-btn"><span class="material-symbols-outlined" style="font-size:16px;">call</span></div>
+              <div class="icon-btn"><span class="material-symbols-outlined" style="font-size:16px;">videocam</span></div>
+            </div>
+          </div>
+          <div id="chatBody" style="flex:1; padding:24px; overflow-y:auto; display:flex; flex-direction:column; gap:14px;">
+            <div style="align-self:center; font-size:11px; color:var(--on-surface-variant); background:var(--surface-container); padding:4px 14px; border-radius:9999px;">Połączenie nawiązane</div>
+            <div class="chat-bubble-in" style="padding:14px 18px; max-width:65%;">
+              <div style="font-size:11px; color:var(--cyan-bright); font-weight:700; margin-bottom:4px;">Stellar Dynamics — K. Vance</div>
+              Dzień dobry, skompletowaliśmy dokumenty za Q3. Gotowe do przekazania.
+            </div>
+            <div class="chat-bubble-out" style="padding:14px 18px; max-width:65%; align-self:flex-end;">
+              Dzień dobry, dziękujemy. Proszę przesłać dokumenty przez bezpieczny formularz.
+            </div>
+            <div class="chat-bubble-in" style="padding:14px 18px; max-width:65%;">
+              <div style="font-size:11px; color:var(--cyan-bright); font-weight:700; margin-bottom:4px;">Stellar Dynamics — K. Vance</div>
+              Wysyłam plik.
+              <div class="hairline" style="margin-top:8px; padding:10px 14px; border-radius:12px; display:flex; align-items:center; gap:10px; background:var(--surface-container);">
+                <span class="material-symbols-outlined" style="color:var(--magenta-bright);">lock</span>
+                <div><div style="font-weight:700; font-size:13px;">Rozliczenie_Q3.pdf</div><div style="font-size:11px; color:var(--on-surface-variant);">2.4 MB</div></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:10px;">
+            <input class="search-input" style="flex:1; padding:12px 18px; border-radius:14px;" placeholder="Wyślij wiadomość..." id="chatInput"/>
+            <button class="glow-btn" style="width:44px; display:flex; align-items:center; justify-content:center;" id="chatSend"><span class="material-symbols-outlined" style="font-size:18px;">send</span></button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- ============ FINANCIALS ============ -->
+    <section class="page" id="page-financials">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div class="eyebrow">Przegląd Finansowy Q3</div>
+          <h1 class="section-title" style="margin:4px 0 16px;">Finanse</h1>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:42px; border-radius:14px; font-size:13px; font-weight:600; color:var(--on-surface);">Eksportuj Raport</button>
+          <button class="glow-btn" style="padding:0 20px; height:42px; font-size:13px;">Wystaw Fakturę</button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-bottom:20px;">
+        <span class="nav-item fin-tab active" data-ftab="ksiegowosc" style="padding:8px 18px; margin:0;">Księgowość</span>
+        <span class="nav-item fin-tab" data-ftab="dokumenty" style="padding:8px 18px; margin:0;">Dokumenty</span>
+      </div>
+
+      <!-- ===== KSIĘGOWOŚĆ ===== -->
+      <div class="fin-panel" id="fin-ksiegowosc">
+      <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:20px;">
+        <div class="glass" style="padding:28px;">
+          <div style="display:flex; justify-content:space-between;">
+            <div class="eyebrow">Obrót netto w tym miesiącu</div>
+            <span class="badge badge-low">+14.2%</span>
+          </div>
+          <div style="font-size:40px; font-weight:800; margin:8px 0 4px; color:var(--emerald-bright);">120 000 zł</div>
+          <div style="font-size:13px; color:var(--on-surface-variant); margin-bottom:20px;">wobec 106 800 zł w poprzednim miesiącu</div>
+          <div style="display:flex; align-items:flex-end; gap:10px; height:120px;">
+            <div style="flex:1; background:var(--surface-container-highest); border-radius:8px 8px 0 0; height:55%;"></div>
+            <div style="flex:1; background:linear-gradient(180deg,var(--emerald-bright),var(--emerald)); border-radius:8px 8px 0 0; height:70%;"></div>
+            <div style="flex:1; background:var(--surface-container-highest); border-radius:8px 8px 0 0; height:48%;"></div>
+            <div style="flex:1; background:linear-gradient(180deg,var(--cyan-bright),var(--cyan)); border-radius:8px 8px 0 0; height:80%;"></div>
+            <div style="flex:1; background:var(--surface-container-highest); border-radius:8px 8px 0 0; height:60%;"></div>
+            <div style="flex:1; background:linear-gradient(180deg,var(--emerald-bright),var(--emerald)); border-radius:8px 8px 0 0; height:100%;"></div>
+          </div>
+        </div>
+
+        <div class="glass" style="padding:28px;">
+          <div class="eyebrow">Niezapłacone Faktury</div>
+          <div style="font-size:32px; font-weight:800; margin:8px 0 4px;">15 000 zł</div>
+          <div style="font-size:13px; color:var(--on-surface-variant); margin-bottom:18px;">10 faktur oczekujących</div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div class="hairline" style="display:flex; justify-content:space-between; padding:12px 14px; border-radius:12px;">
+              <span style="font-size:13px; display:flex; align-items:center; gap:6px;"><span class="material-symbols-outlined" style="font-size:16px; color:var(--magenta-bright);">warning</span>Zaległe (30+ dni)</span>
+              <strong>3 000 zł</strong>
+            </div>
+            <div class="hairline" style="display:flex; justify-content:space-between; padding:12px 14px; border-radius:12px;">
+              <span style="font-size:13px; display:flex; align-items:center; gap:6px;"><span class="material-symbols-outlined" style="font-size:16px; color:var(--cyan-bright);">schedule</span>Termin za 7 dni</span>
+              <strong>7 500 zł</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:28px; margin-top:20px;">
+        <h3 style="font-size:18px; font-weight:700; margin:0 0 16px;">Ostatnie Transakcje</h3>
+        <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead>
+            <tr style="text-align:left; color:var(--on-surface-variant); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">
+              <th style="padding:8px 12px; font-weight:600;">Klient / Węzeł</th><th style="padding:8px 12px; font-weight:600;">Data</th><th style="padding:8px 12px; font-weight:600;">Kategoria</th><th style="padding:8px 12px; font-weight:600;">Status</th><th style="padding:8px 12px; font-weight:600; text-align:right;">Kwota</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="msc-list-row hairline"><td style="padding:14px 12px; font-weight:700;">Stellar Dynamics</td><td style="padding:14px 12px; color:var(--on-surface-variant);">24 Paź 2023</td><td style="padding:14px 12px;">Licencja Enterprise</td><td style="padding:14px 12px;"><span class="badge badge-low">OPŁACONE</span></td><td style="padding:14px 12px; text-align:right; font-weight:700;">1 850,00 zł</td></tr>
+            <tr class="msc-list-row hairline"><td style="padding:14px 12px; font-weight:700;">Nova Corp</td><td style="padding:14px 12px; color:var(--on-surface-variant);">23 Paź 2023</td><td style="padding:14px 12px;">Konsulting</td><td style="padding:14px 12px;"><span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">W TRAKCIE</span></td><td style="padding:14px 12px; text-align:right; font-weight:700;">1 200,00 zł</td></tr>
+            <tr class="msc-list-row"><td style="padding:14px 12px; font-weight:700;">Nebula Systems</td><td style="padding:14px 12px; color:var(--on-surface-variant);">15 Wrz 2023</td><td style="padding:14px 12px;">Hosting Serwera</td><td style="padding:14px 12px;"><span class="badge badge-critical">ZALEGŁE</span></td><td style="padding:14px 12px; text-align:right; font-weight:700;">1 450,00 zł</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+      </div><!-- /fin-ksiegowosc -->
+
+      <!-- ===== DOKUMENTY ===== -->
+      <div class="fin-panel" id="fin-dokumenty" style="display:none;">
+      <div class="eyebrow">Generator Pism i Pełnomocnictw</div>
+      <h1 class="section-title" style="margin:4px 0 6px;">Dokumenty</h1>
+      <p style="color:var(--on-surface-variant); font-size:14px; margin-top:0;">Formularz auto-wypełnia dane klienta z systemu — dopisujesz tylko zmienne pola.</p>
+
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:14px;">
+        <div class="glass" style="padding:20px; cursor:pointer;">
+          <span class="material-symbols-outlined" style="color:var(--cyan-bright);">gavel</span>
+          <div style="font-weight:700; margin-top:8px;">Pełnomocnictwa</div>
+          <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">PPO-1, PPS-1, UPL-1, PEL, KSeF</div>
+          <div class="eyebrow" style="margin-top:10px;">5 wzorów</div>
+        </div>
+        <div class="glass" style="padding:20px; cursor:pointer;">
+          <span class="material-symbols-outlined" style="color:var(--emerald-bright);">account_balance</span>
+          <div style="font-weight:700; margin-top:8px;">Pisma do urzędów</div>
+          <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Zaświadczenia, czynny żal, korekty</div>
+          <div class="eyebrow" style="margin-top:10px;">7 wzorów</div>
+        </div>
+        <div class="glass" style="padding:20px; cursor:pointer;">
+          <span class="material-symbols-outlined" style="color:#ffb140;">handshake</span>
+          <div style="font-weight:700; margin-top:8px;">Dokumenty z klientem</div>
+          <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Umowa, RODO, wypowiedzenie</div>
+          <div class="eyebrow" style="margin-top:10px;">4 wzory</div>
+        </div>
+        <div class="glass" style="padding:20px; cursor:pointer; border-color:rgba(255,75,137,0.3);">
+          <span class="material-symbols-outlined" style="color:var(--magenta-bright);">shield</span>
+          <div style="font-weight:700; margin-top:8px;">AML i Sygnaliści</div>
+          <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Ankieta identyfikacji, oświadczenie PEP</div>
+          <div class="eyebrow" style="margin-top:10px;">3 wzory</div>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:28px; margin-top:20px;">
+        <h3 style="margin:0 0 16px; font-size:18px; font-weight:700;">Ostatnio Wygenerowane</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div><div style="font-weight:700;">Pełnomocnictwo UPL-1 — Stellar Dynamics</div><div style="font-size:12px; color:var(--on-surface-variant);">Wygenerowano dziś, 09:14</div></div>
+            <span class="badge badge-low">WYSŁANO DO E-PODPISU</span>
+          </div>
+          <div class="msc-list-row hairline" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div><div style="font-weight:700;">Umowa o prowadzenie księgowości — Quantum Financial</div><div style="font-size:12px; color:var(--on-surface-variant);">Wygenerowano wczoraj</div></div>
+            <span class="badge badge-neutral">GOTOWE PDF</span>
+          </div>
+          <div class="msc-list-row" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-radius:14px;">
+            <div><div style="font-weight:700;">Czynny żal — Nebula Systems</div><div style="font-size:12px; color:var(--on-surface-variant);">Wygenerowano 20.08</div></div>
+            <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.35);">PODPISANE</span>
+          </div>
+        </div>
+      </div>
+      </div><!-- /fin-dokumenty -->
+    </section>
+
+    <!-- ============ ZESPÓŁ ============ -->
+    <section class="page" id="page-team">
+      <div class="eyebrow">Postęp Księgowania — Sierpień</div>
+      <h1 class="section-title" style="margin:4px 0 6px;">Zespół</h1>
+      <p style="color:var(--on-surface-variant); font-size:14px; margin-top:0;">Zaksięgowane dokumenty (KSeF + JPK_V7) na tle pracowników, posortowane od najbardziej opóźnionych.</p>
+
+      <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:20px; margin-top:14px;">
+        <div class="glass" style="padding:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <h3 style="margin:0; font-size:16px; font-weight:700;">RANKING PRACOWNIKÓW</h3>
+            <span style="font-size:11px; color:var(--on-surface-variant);">vs poprzedni miesiąc</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+
+            <div class="hairline" style="border-radius:16px; padding:16px; border-color:rgba(255,75,137,0.35);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px;height:36px;border-radius:9999px;background:var(--surface-container-highest);"></div>
+                  <div><div style="font-weight:700; font-size:13px;">Jan Nowak</div><div style="font-size:11px; color:var(--on-surface-variant);">Dział: Kadry i Płace • 34 klientów</div></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:800; font-size:16px; color:var(--magenta-bright);">61%</div>
+                  <div style="font-size:11px; color:var(--magenta-bright); display:flex; align-items:center; gap:2px; justify-content:flex-end;"><span class="material-symbols-outlined" style="font-size:14px;">trending_down</span>-6 pkt</div>
+                </div>
+              </div>
+              <div style="font-size:11px; color:var(--on-surface-variant); display:flex; justify-content:space-between;"><span>Zaksięgowano 207 / 340 dok.</span><span>18 dni do końca m-ca</span></div>
+              <div class="bar-track" style="margin-top:6px;"><div class="bar-fill" style="width:61%; background:var(--magenta-bright);"></div></div>
+            </div>
+
+            <div class="hairline" style="border-radius:16px; padding:16px; border-color:rgba(255,177,64,0.35);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px;height:36px;border-radius:9999px;background:var(--surface-container-highest);"></div>
+                  <div><div style="font-weight:700; font-size:13px;">Alex Wójcik</div><div style="font-size:11px; color:var(--on-surface-variant);">Dział: KPiR • 22 klientów</div></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:800; font-size:16px; color:#ffb140;">76%</div>
+                  <div style="font-size:11px; color:var(--emerald-bright); display:flex; align-items:center; gap:2px; justify-content:flex-end;"><span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>+3 pkt</div>
+                </div>
+              </div>
+              <div style="font-size:11px; color:var(--on-surface-variant); display:flex; justify-content:space-between;"><span>Zaksięgowano 189 / 249 dok.</span><span>18 dni do końca m-ca</span></div>
+              <div class="bar-track" style="margin-top:6px;"><div class="bar-fill" style="width:76%; background:#ffb140;"></div></div>
+            </div>
+
+            <div class="hairline" style="border-radius:16px; padding:16px; border-color:rgba(0,226,139,0.35);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px;height:36px;border-radius:9999px;background:var(--surface-container-highest);"></div>
+                  <div><div style="font-weight:700; font-size:13px;">Anna Kowalska</div><div style="font-size:11px; color:var(--on-surface-variant);">Dział: Audyt Podatkowy • 24 klientów</div></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:800; font-size:16px; color:var(--emerald-bright);">94%</div>
+                  <div style="font-size:11px; color:var(--emerald-bright); display:flex; align-items:center; gap:2px; justify-content:flex-end;"><span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>+2 pkt</div>
+                </div>
+              </div>
+              <div style="font-size:11px; color:var(--on-surface-variant); display:flex; justify-content:space-between;"><span>Zaksięgowano 301 / 320 dok.</span><span>18 dni do końca m-ca</span></div>
+              <div class="bar-track" style="margin-top:6px;"><div class="bar-fill" style="width:94%; background:var(--emerald-bright);"></div></div>
+            </div>
+
+          </div>
+          <button class="icon-btn hairline" style="width:100%; height:40px; border-radius:12px; margin-top:16px; font-size:13px; font-weight:700; color:var(--cyan-bright);">ZOBACZ CAŁY ZESPÓŁ</button>
+        </div>
+
+        <div class="glass" style="padding:28px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+          <div class="eyebrow">Postęp Ogólny Biura</div>
+          <svg width="170" height="170" viewBox="0 0 170 170" style="margin:14px 0;">
+            <circle cx="85" cy="85" r="70" fill="none" stroke="var(--surface-container-highest)" stroke-width="14"/>
+            <circle cx="85" cy="85" r="70" fill="none" stroke="var(--cyan-bright)" stroke-width="14" stroke-linecap="round"
+              stroke-dasharray="439.8" stroke-dashoffset="145.1" transform="rotate(-90 85 85)"/>
+            <text x="85" y="80" text-anchor="middle" font-size="34" font-weight="800" fill="var(--on-surface)" font-family="Inter">67%</text>
+            <text x="85" y="102" text-anchor="middle" font-size="11" fill="var(--on-surface-variant)" font-family="Inter">DOKUMENTÓW</text>
+          </svg>
+          <div style="font-size:12px; color:var(--on-surface-variant); margin-bottom:18px;">697 / 909 dokumentów zaksięgowanych • 18 dni do końca miesiąca</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%;">
+            <div class="hairline" style="border-radius:14px; padding:14px;">
+              <span class="material-symbols-outlined" style="color:var(--emerald-bright);">task_alt</span>
+              <div style="font-size:20px; font-weight:800; margin-top:4px;">697</div>
+              <div class="eyebrow" style="margin-top:2px; font-size:10px;">Zaksięgowane</div>
+            </div>
+            <div class="hairline" style="border-radius:14px; padding:14px;">
+              <span class="material-symbols-outlined" style="color:var(--magenta-bright);">pending_actions</span>
+              <div style="font-size:20px; font-weight:800; margin-top:4px; color:var(--magenta-bright);">212</div>
+              <div class="eyebrow" style="margin-top:2px; font-size:10px;">Do zaksięgowania</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ AI HUB ============ -->
+    <section class="page" id="page-ai-hub">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div class="eyebrow">Automatyzacja</div>
+          <h1 class="section-title" style="margin:4px 0 6px;">Centrum AI</h1>
+          <p style="color:var(--on-surface-variant); font-size:14px; margin-top:0;">Moduł automatyzacji napędzany AI — aktywny.</p>
+        </div>
+        <span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);">● SYSTEM SPRAWNY</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:20px; margin-top:14px;">
+        <div class="glass" style="padding:28px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:320px;">
+          <h3 style="margin:0 0 20px; color:var(--cyan-bright); font-size:20px; font-weight:800; align-self:flex-start;">Asystent AI</h3>
+          <div style="width:150px; height:150px; border-radius:9999px; border:2px solid rgba(0,219,231,0.4); display:flex; align-items:center; justify-content:center; box-shadow:0 0 60px -10px rgba(0,219,231,0.6);">
+            <div style="width:80px; height:80px; border-radius:9999px; background:radial-gradient(circle,var(--cyan-bright),var(--cyan)); display:flex; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(0,219,231,0.8);">
+              <span class="material-symbols-outlined" style="font-size:32px; color:#00363a;">bolt</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass" style="padding:24px; border-color:rgba(255,75,137,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px;"><span class="material-symbols-outlined" style="color:var(--magenta-bright);">warning</span>Wykryte Anomalie</h3>
+            <span class="badge badge-critical">3 AKTYWNE</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div class="hairline" style="border-radius:14px; padding:12px 14px;"><div style="font-weight:700; font-size:13px;">Rozbieżność Księgowa</div><div style="font-size:12px; color:var(--on-surface-variant);">Wykryto niezgodność węzła Alpha-7 w uzgodnieniach Q3.</div></div>
+            <div class="hairline" style="border-radius:14px; padding:12px 14px;"><div style="font-weight:700; font-size:13px;">Flaga KYC: Podmiot Zeta</div><div style="font-size:12px; color:var(--on-surface-variant);">Nietypowa częstotliwość transferów transgranicznych.</div></div>
+            <div class="hairline" style="border-radius:14px; padding:12px 14px;"><div style="font-weight:700; font-size:13px;">Przekroczono czas API podatkowego</div><div style="font-size:12px; color:var(--on-surface-variant);">Utracono połączenie z orbitalnym serwerem podatkowym.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:28px; margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <h3 style="margin:0; font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px;"><span class="material-symbols-outlined" style="color:var(--emerald-bright);">sync</span>Zadania Wykonywane Automatycznie</h3>
+          <span style="font-size:13px; color:var(--cyan-bright); cursor:pointer;">Zobacz wszystkie strumienie →</span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+          <div class="hairline" style="border-radius:16px; padding:18px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span class="material-symbols-outlined" style="color:var(--emerald-bright);">description</span><span class="badge badge-low">W TOKU</span></div>
+            <div style="font-weight:700; margin-bottom:4px;">Auto-skan KYC</div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-bottom:10px;">Przetwarzanie 450 nowych dokumentów klientów.</div>
+            <div class="bar-track"><div class="bar-fill" style="width:78%; background:var(--emerald-bright);"></div></div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--on-surface-variant); margin-top:6px;"><span>Ukończono 78%</span><span>Pozostało ok. 2 min</span></div>
+          </div>
+          <div class="hairline" style="border-radius:16px; padding:18px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span class="material-symbols-outlined" style="color:var(--cyan-bright);">analytics</span><span class="badge badge-low">W TOKU</span></div>
+            <div style="font-weight:700; margin-bottom:4px;">Prognoza Rozliczeń Podatkowych</div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-bottom:10px;">Symulacja zobowiązań Q4 dla węzłów Tier 1.</div>
+            <div class="bar-track"><div class="bar-fill" style="width:42%; background:var(--cyan-bright);"></div></div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--on-surface-variant); margin-top:6px;"><span>Ukończono 42%</span><span>Pozostało ok. 15 min</span></div>
+          </div>
+          <div class="hairline" style="border-radius:16px; padding:18px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span class="material-symbols-outlined" style="color:var(--on-surface-variant);">schedule</span><span class="badge badge-neutral">W KOLEJCE</span></div>
+            <div style="font-weight:700; margin-bottom:4px;">Synchronizacja Księgi</div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-bottom:10px;">Oczekiwanie na autoryzację API z Orbital Hub.</div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--on-surface-variant); margin-top:20px;"><span>Zaplanowano</span><span>Za 45 min</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ USTAWIENIA ============ -->
+    <section class="page" id="page-ustawienia">
+      <div class="eyebrow">Konfiguracja Systemu</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin:4px 0 20px;">
+        <h1 class="section-title" style="margin:0;">Ustawienia</h1>
+        <div style="display:flex; gap:8px;">
+          <span class="nav-item set-tab active" data-stab="biuro" style="padding:8px 18px; margin:0;">Dane Biura</span>
+          <span class="nav-item set-tab" data-stab="zespol" style="padding:8px 18px; margin:0;">Zespół</span>
+          <span class="nav-item set-tab" data-stab="integracje" id="setTabIntegracje" style="padding:8px 18px; margin:0;">Integracje</span>
+        </div>
+      </div>
+
+      <!-- ===== DANE BIURA ===== -->
+      <div class="set-panel" id="set-biuro">
+        <div style="display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start;">
+          <div class="glass" style="padding:28px;">
+            <h3 style="margin:0 0 18px; font-size:16px; font-weight:700;">Dane Rejestrowe Biura</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+              <div><label style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">Nazwa firmy</label>
+                <input class="search-input" style="width:100%; padding:11px 14px; margin-top:6px; border-radius:12px;" value="Solidus Biuro Rachunkowe Sp. z o.o." /></div>
+              <div><label style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">NIP</label>
+                <input class="search-input" style="width:100%; padding:11px 14px; margin-top:6px; border-radius:12px;" value="527-25-01-345" /></div>
+              <div><label style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">REGON</label>
+                <input class="search-input" style="width:100%; padding:11px 14px; margin-top:6px; border-radius:12px;" value="147258369" /></div>
+              <div><label style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">KRS</label>
+                <input class="search-input" style="width:100%; padding:11px 14px; margin-top:6px; border-radius:12px;" value="0000587412" /></div>
+              <div style="grid-column:1/-1;"><label style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">Adres siedziby</label>
+                <input class="search-input" style="width:100%; padding:11px 14px; margin-top:6px; border-radius:12px;" value="ul. Księgowa 12/4, 90-001 Łódź" /></div>
+              <div><label style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">Telefon</label>
+                <input class="search-input" style="width:100%; padding:11px 14px; margin-top:6px; border-radius:12px;" value="+48 42 123 45 67" /></div>
+              <div><label style="font-size:11px; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:.04em;">E-mail biura</label>
+                <input class="search-input" style="width:100%; padding:11px 14px; margin-top:6px; border-radius:12px;" value="kontakt@solidus-ksiegowosc.pl" /></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <button class="glow-btn" style="padding:11px 24px; font-size:13px;">Zapisz zmiany</button>
+              <button class="icon-btn hairline" style="width:auto; padding:0 20px; height:42px; border-radius:14px; font-size:13px; font-weight:600;">Anuluj</button>
+            </div>
+          </div>
+
+          <div class="glass" style="padding:24px; text-align:center;">
+            <h3 style="margin:0 0 14px; font-size:14px; font-weight:700;">Logo Biura</h3>
+            <div style="width:120px; height:120px; border-radius:20px; background:linear-gradient(135deg,var(--cyan-bright),var(--magenta-bright)); margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:34px; font-weight:800; color:#050b18;">SB</div>
+            <button class="icon-btn hairline" style="width:100%; height:38px; border-radius:12px; font-size:12px; font-weight:700; color:var(--cyan-bright);">Zmień logo</button>
+            <div style="font-size:11px; color:var(--on-surface-variant); margin-top:16px; text-align:left;">Logo pojawia się na fakturach, pismach z generatora dokumentów i w stopce maili wysyłkowych.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ZESPÓŁ ===== -->
+      <div class="set-panel" id="set-zespol" style="display:none;">
+        <div class="glass" style="padding:0; overflow:hidden;">
+          <div style="padding:20px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.07);">
+            <h3 style="margin:0; font-size:16px; font-weight:700;">Pracownicy Biura</h3>
+            <button class="glow-btn" style="padding:9px 18px; font-size:12px; display:flex; align-items:center; gap:6px;"><span class="material-symbols-outlined" style="font-size:16px;">person_add</span> Dodaj pracownika</button>
+          </div>
+          <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="text-align:left; color:var(--on-surface-variant); font-size:11px; text-transform:uppercase; letter-spacing:.04em;">
+                <th style="padding:10px 20px; font-weight:600;">Pracownik</th>
+                <th style="padding:10px 12px; font-weight:600;">Rola</th>
+                <th style="padding:10px 12px; font-weight:600;">Dostęp do systemu</th>
+                <th style="padding:10px 12px; font-weight:600;">Certyfikat podpisu</th>
+                <th style="padding:10px 12px; font-weight:600;">Może podpisywać</th>
+                <th style="padding:10px 20px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="msc-list-row hairline">
+                <td style="padding:14px 20px; font-weight:700; display:flex; align-items:center; gap:10px;"><div style="width:30px;height:30px;border-radius:9999px;background:var(--surface-container-highest);"></div>Anna Kowalska</td>
+                <td style="padding:14px 12px;">Kierownik Zespołu</td>
+                <td style="padding:14px 12px;"><span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">Administrator</span></td>
+                <td style="padding:14px 12px;"><span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);">CHMURA • SimplySign</span></td>
+                <td style="padding:14px 12px; font-size:12px;">Umowy, pełnomocnictwa, RODO</td>
+                <td style="padding:14px 20px; text-align:right;"><span class="material-symbols-outlined" style="font-size:18px; color:var(--on-surface-variant); cursor:pointer;">edit</span></td>
+              </tr>
+              <tr class="msc-list-row hairline">
+                <td style="padding:14px 20px; font-weight:700; display:flex; align-items:center; gap:10px;"><div style="width:30px;height:30px;border-radius:9999px;background:var(--surface-container-highest);"></div>Jan Nowak</td>
+                <td style="padding:14px 12px;">Księgowy</td>
+                <td style="padding:14px 12px;"><span class="badge badge-neutral">Standard</span></td>
+                <td style="padding:14px 12px;"><span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">TOKEN LOKALNY</span></td>
+                <td style="padding:14px 12px; font-size:12px;">Tylko RODO, dokumenty wewnętrzne</td>
+                <td style="padding:14px 20px; text-align:right;"><span class="material-symbols-outlined" style="font-size:18px; color:var(--on-surface-variant); cursor:pointer;">edit</span></td>
+              </tr>
+              <tr class="msc-list-row hairline">
+                <td style="padding:14px 20px; font-weight:700; display:flex; align-items:center; gap:10px;"><div style="width:30px;height:30px;border-radius:9999px;background:var(--surface-container-highest);"></div>Alex Wójcik</td>
+                <td style="padding:14px 12px;">Księgowy</td>
+                <td style="padding:14px 12px;"><span class="badge badge-neutral">Standard</span></td>
+                <td style="padding:14px 12px;"><span class="badge badge-critical">BRAK CERTYFIKATU</span></td>
+                <td style="padding:14px 12px; font-size:12px; color:var(--on-surface-variant);">Brak uprawnień do podpisu</td>
+                <td style="padding:14px 20px; text-align:right;"><span class="material-symbols-outlined" style="font-size:18px; color:var(--on-surface-variant); cursor:pointer;">edit</span></td>
+              </tr>
+              <tr class="msc-list-row">
+                <td style="padding:14px 20px; font-weight:700; display:flex; align-items:center; gap:10px;"><div style="width:30px;height:30px;border-radius:9999px;background:var(--surface-container-highest);"></div>Marta Zielińska</td>
+                <td style="padding:14px 12px;">Asystent</td>
+                <td style="padding:14px 12px;"><span class="badge badge-neutral">Ograniczone</span></td>
+                <td style="padding:14px 12px;"><span class="badge badge-critical">BRAK CERTYFIKATU</span></td>
+                <td style="padding:14px 12px; font-size:12px; color:var(--on-surface-variant);">Brak uprawnień do podpisu</td>
+                <td style="padding:14px 20px; text-align:right;"><span class="material-symbols-outlined" style="font-size:18px; color:var(--on-surface-variant); cursor:pointer;">edit</span></td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+          <div style="padding:14px 24px; font-size:11px; color:var(--on-surface-variant); border-top:1px solid rgba(255,255,255,0.06);">
+            Kliknij <span class="material-symbols-outlined" style="font-size:13px; vertical-align:-2px;">edit</span> przy pracowniku, aby podłączyć jego certyfikat (chmura SimplySign lub token lokalny) i ustawić, jakie dokumenty może podpisywać. Uprawnienie „Umowy z nowymi klientami” nadaje się wyłącznie osobom z rolą kierowniczą lub administratora.
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== INTEGRACJE ===== -->
+      <div class="set-panel" id="set-integracje" style="display:none;">
+
+        <div class="glass" style="padding:26px; margin-bottom:20px; border-color:rgba(0,226,139,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="width:48px;height:48px;border-radius:14px;background:rgba(0,226,139,0.12); border:1px solid rgba(0,226,139,0.35); display:flex; align-items:center; justify-content:center;">
+                <span class="material-symbols-outlined" style="color:var(--emerald-bright);">flight_takeoff</span>
+              </div>
+              <div>
+                <div style="font-weight:700; font-size:15px; display:flex; align-items:center; gap:8px;">
+                  DelegoApp — delegacje służbowe
+                  <span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);">POŁĄCZONO</span>
+                </div>
+                <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Konto organizacji: solidus-ksiegowosc • klucz API aktywny • ost. synchronizacja: dziś, 10:12</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:38px; border-radius:12px; font-size:12px; font-weight:700;">Synchronizuj teraz</button>
+              <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:38px; border-radius:12px; font-size:12px; font-weight:700; color:var(--magenta-bright);">Rozłącz</button>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:20px;">
+            <div class="hairline" style="border-radius:12px; padding:14px;">
+              <div class="eyebrow">Delegacje zsynchronizowane (sierpień)</div>
+              <div style="font-size:22px; font-weight:800; margin-top:4px;">14</div>
+            </div>
+            <div class="hairline" style="border-radius:12px; padding:14px;">
+              <div class="eyebrow">Automatycznie zaksięgowane</div>
+              <div style="font-size:22px; font-weight:800; margin-top:4px; color:var(--emerald-bright);">12</div>
+            </div>
+            <div class="hairline" style="border-radius:12px; padding:14px;">
+              <div class="eyebrow">Błędy synchronizacji</div>
+              <div style="font-size:22px; font-weight:800; margin-top:4px; color:var(--magenta-bright);">0</div>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--on-surface-variant); margin-top:14px;">Pracownicy składają wnioski o delegację, zaliczki i rozliczenia bezpośrednio w aplikacji DelegoApp (web i mobilnie) — zatwierdzone rozliczenia trafiają tu automatycznie i są księgowane bez ręcznego przepisywania. Pełny podgląd w zakładce <span style="color:var(--cyan-bright); cursor:pointer; font-weight:600;" data-goto="delegacje">„Delegacje"</span>.</div>
+        </div>
+
+        <div class="glass" style="padding:26px; margin-bottom:20px; border-color:rgba(0,226,139,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="width:48px;height:48px;border-radius:14px;background:rgba(0,226,139,0.12); border:1px solid rgba(0,226,139,0.35); display:flex; align-items:center; justify-content:center;">
+                <span class="material-symbols-outlined" style="color:var(--emerald-bright);">receipt_long</span>
+              </div>
+              <div>
+                <div style="font-weight:700; font-size:15px; display:flex; align-items:center; gap:8px;">
+                  Program do fakturowania klientów
+                  <span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);">POŁĄCZONO</span>
+                </div>
+                <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Fakturownia • konto: biuro@solidus-ksiegowosc.pl • ost. synchronizacja: dziś, 09:50</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:38px; border-radius:12px; font-size:12px; font-weight:700;">Synchronizuj teraz</button>
+              <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:38px; border-radius:12px; font-size:12px; font-weight:700; color:var(--magenta-bright);">Rozłącz</button>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:20px;">
+            <div class="hairline" style="border-radius:12px; padding:14px;">
+              <div class="eyebrow">Faktury wystawione (sierpień)</div>
+              <div style="font-size:22px; font-weight:800; margin-top:4px;">62</div>
+            </div>
+            <div class="hairline" style="border-radius:12px; padding:14px;">
+              <div class="eyebrow">Wysłane automatycznie do klientów</div>
+              <div style="font-size:22px; font-weight:800; margin-top:4px; color:var(--emerald-bright);">58</div>
+            </div>
+            <div class="hairline" style="border-radius:12px; padding:14px;">
+              <div class="eyebrow">Błędy synchronizacji</div>
+              <div style="font-size:22px; font-weight:800; margin-top:4px; color:var(--magenta-bright);">1</div>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--on-surface-variant); margin-top:14px;">Faktury dla klientów biura (usługa księgowa) wystawiasz z poziomu karty klienta w zakładce „Klienci" — dane trafiają bezpośrednio do programu fakturowego bez konieczności logowania się do niego osobno.</div>
+        </div>
+
+        <div class="glass" style="padding:26px; margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="width:48px;height:48px;border-radius:14px;background:rgba(255,75,137,0.12); border:1px solid rgba(255,75,137,0.3); display:flex; align-items:center; justify-content:center;">
+                <span class="material-symbols-outlined" style="color:var(--magenta-bright);">fingerprint</span>
+              </div>
+              <div>
+                <div style="font-weight:700; font-size:15px;">Podpis kwalifikowany</div>
+                <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Certyfikat i uprawnienia do podpisywania przypisuje się indywidualnie każdemu pracownikowi — nie biuru jako całości.</div>
+              </div>
+            </div>
+            <button class="icon-btn hairline" style="width:auto; padding:0 18px; height:38px; border-radius:12px; font-size:12px; font-weight:700; color:var(--cyan-bright);" id="goToZespolCertBtn">Zarządzaj certyfikatami pracowników →</button>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:20px;">
+            <div class="hairline" style="border-radius:12px; padding:14px;"><div class="eyebrow">Pracownicy z certyfikatem</div><div style="font-size:22px; font-weight:800; margin-top:4px; color:var(--emerald-bright);">2 / 4</div></div>
+            <div class="hairline" style="border-radius:12px; padding:14px;"><div class="eyebrow">Metoda: chmura</div><div style="font-size:14px; font-weight:700; margin-top:6px;">Certum SimplySign</div></div>
+            <div class="hairline" style="border-radius:12px; padding:14px;"><div class="eyebrow">Metoda: lokalna</div><div style="font-size:14px; font-weight:700; margin-top:6px;">Token USB / karta (jak Płatnik)</div></div>
+          </div>
+          <div style="font-size:12px; color:var(--on-surface-variant); margin-top:14px;">Uprawnienie do podpisywania umów z nowymi klientami nadawane jest wyłącznie kierownikom zespołu i administratorom — pozostali pracownicy mogą mieć ograniczony zakres (np. tylko RODO, dokumenty wewnętrzne) lub brak dostępu do podpisu.</div>
+        </div>
+
+        <div class="glass" style="padding:0; overflow:hidden;">
+          <div style="padding:20px 24px; border-bottom:1px solid rgba(255,255,255,0.07);">
+            <h3 style="margin:0; font-size:16px; font-weight:700;">Pozostałe Integracje</h3>
+          </div>
+          <div style="display:flex; flex-direction:column;">
+            <div class="msc-list-row" style="display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-bottom:1px solid rgba(255,255,255,0.06);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--cyan-bright);">dns</span>
+                <div><div style="font-weight:700; font-size:13px;">Krajowy System e-Faktur (KSeF)</div><div style="font-size:11px; color:var(--on-surface-variant);">Wysyłka i odbiór faktur ustrukturyzowanych</div></div>
+              </div>
+              <span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);">POŁĄCZONO</span>
+            </div>
+            <div class="msc-list-row" style="display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-bottom:1px solid rgba(255,255,255,0.06);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--on-surface-variant);">calculate</span>
+                <div><div style="font-weight:700; font-size:13px;">Program księgowy (import XLS)</div><div style="font-size:11px; color:var(--on-surface-variant);">Comarch Optima — źródło danych do wysyłek podatkowych</div></div>
+              </div>
+              <span class="badge" style="background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.3);">IMPORT RĘCZNY</span>
+            </div>
+            <div class="msc-list-row" style="display:flex; justify-content:space-between; align-items:center; padding:16px 24px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="material-symbols-outlined" style="color:var(--on-surface-variant);">mail</span>
+                <div><div style="font-weight:700; font-size:13px;">Skrzynka pocztowa biura</div><div style="font-size:11px; color:var(--on-surface-variant);">Wysyłka przypomnień i wiadomości do klientów</div></div>
+              </div>
+              <span class="badge" style="background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.35);">POŁĄCZONO</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+  const navItems = document.querySelectorAll('.nav-item[data-page]');
+  const pages = document.querySelectorAll('.page');
+
+  function goToPage(id){
+    pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + id));
+    navItems.forEach(n => n.classList.toggle('active', n.dataset.page === id));
+    document.getElementById('sidebar').classList.remove('open');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  navItems.forEach(item => {
+    item.addEventListener('click', () => goToPage(item.dataset.page));
+  });
+
+
+  document.querySelectorAll('[data-goto]').forEach(el => {
+    el.addEventListener('click', () => {
+      goToPage(el.dataset.goto);
+      if(el.dataset.subtabId){
+        const t = document.getElementById(el.dataset.subtabId);
+        if(t) t.click();
+      }
+    });
+  });
+
+  // Kalendarz: przełączanie Terminy / Radar Zmian
+  const calTabs = document.querySelectorAll('.cal-tab');
+  calTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      calTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.cal-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('cal-' + tab.dataset.caltab).style.display = 'block';
+    });
+  });
+
+  // Finanse: przełączanie Księgowość / Zespół
+  const finTabs = document.querySelectorAll('.fin-tab');
+  finTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      finTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.fin-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('fin-' + tab.dataset.ftab).style.display = 'block';
+    });
+  });
+
+  // mobile menu toggle
+  const menuToggle = document.getElementById('menuToggle');
+  function checkMobile(){
+    menuToggle.style.display = window.innerWidth <= 900 ? 'block' : 'none';
+  }
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  menuToggle.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+
+  // Onboarding nowego klienta — pełny proces krok po kroku
+  const startOnboardingBtn = document.getElementById('startOnboardingBtn');
+  const onboardingPanel = document.getElementById('onboardingPanel');
+  const generateDocsBtn = document.getElementById('generateDocsBtn');
+  const sendPackageBtn = document.getElementById('sendPackageBtn');
+  const activateClientBtn = document.getElementById('activateClientBtn');
+  const onboardingHint = document.getElementById('onboardingHint');
+  const onboardingStatusBadge = document.getElementById('onboardingStatusBadge');
+
+  function markStepDone(stepNum){
+    const dot = document.querySelector('.ob-step[data-step="'+stepNum+'"] .ob-dot');
+    if(dot){ dot.style.background = 'var(--emerald-bright)'; dot.style.color = '#00361b'; dot.textContent = '✓'; }
+  }
+  function markStepCurrent(stepNum){
+    const dot = document.querySelector('.ob-step[data-step="'+stepNum+'"] .ob-dot');
+    if(dot){ dot.style.background = 'var(--cyan-bright)'; dot.style.color = '#00363a'; }
+  }
+  function setRowDone(reqNum){
+    const row = document.querySelector('.ob-pending[data-req="'+reqNum+'"]');
+    if(!row) return;
+    row.style.opacity = '1';
+    const icon = row.querySelector('.material-symbols-outlined');
+    icon.style.color = 'var(--cyan-bright)';
+    const badge = row.querySelector('.badge');
+    badge.textContent = 'WYGENEROWANO';
+    badge.className = 'badge';
+    badge.style.cssText = 'background:rgba(0,219,231,0.12); color:var(--cyan-bright); border:1px solid rgba(0,219,231,0.35);';
+    row.style.borderLeft = '3px solid var(--cyan-bright)';
+  }
+
+  if(startOnboardingBtn){
+    startOnboardingBtn.addEventListener('click', () => {
+      onboardingPanel.style.display = 'block';
+      onboardingPanel.scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+  }
+
+  if(generateDocsBtn){
+    generateDocsBtn.addEventListener('click', () => {
+      setRowDone(4);
+      setRowDone(5);
+      markStepDone(4);
+      markStepDone(5);
+      markStepCurrent(6);
+      onboardingStatusBadge.textContent = 'KROK 6 / 7';
+      onboardingHint.textContent = 'Dokumenty gotowe: Umowa, RODO, UPL-1, PEL. Wyślij pakiet do podpisu elektronicznego klienta.';
+      generateDocsBtn.style.display = 'none';
+      sendPackageBtn.style.display = 'inline-flex';
+    });
+  }
+
+  if(sendPackageBtn){
+    sendPackageBtn.addEventListener('click', () => {
+      setRowDone(6);
+      markStepDone(6);
+      markStepCurrent(7);
+      onboardingStatusBadge.textContent = 'KROK 7 / 7';
+      onboardingHint.textContent = 'Pakiet wysłany na e-mail klienta. Po odesłaniu podpisanych dokumentów aktywuj konto klienta.';
+      sendPackageBtn.style.display = 'none';
+      activateClientBtn.style.display = 'inline-flex';
+    });
+  }
+
+  if(activateClientBtn){
+    activateClientBtn.addEventListener('click', () => {
+      markStepDone(7);
+      onboardingStatusBadge.textContent = 'ZAKOŃCZONO';
+      onboardingStatusBadge.className = 'badge badge-low';
+      onboardingHint.textContent = 'Klient aktywowany — dodany do bazy, widoczny w zakładce Klienci wraz z pełną dokumentacją.';
+      activateClientBtn.style.display = 'none';
+    });
+  }
+
+  // Podpis kwalifikowany: skrót do zarządzania certyfikatami per pracownik (zakładka Zespół)
+  const goToZespolCertBtn = document.getElementById('goToZespolCertBtn');
+  if(goToZespolCertBtn){
+    goToZespolCertBtn.addEventListener('click', () => {
+      const zespolTab = document.querySelector('.set-tab[data-stab="zespol"]');
+      if(zespolTab) zespolTab.click();
+    });
+  }
+
+  // Ustawienia: przełączanie Dane Biura / Zespół / Integracje
+  const setTabs = document.querySelectorAll('.set-tab');
+  setTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      setTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.set-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('set-' + tab.dataset.stab).style.display = 'block';
+    });
+  });
+
+  // Komunikacja: przełączanie Wysyłki Podatkowe / Wiadomości
+  const commTabs = document.querySelectorAll('.comm-tab');
+  commTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      commTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.comm-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('comm-' + tab.dataset.ctab2).style.display = 'block';
+    });
+  });
+
+  // Wysyłki podatkowe: zaznacz wszystkie + licznik
+  const selectAll = document.getElementById('selectAllRows');
+  const rowChecks = () => document.querySelectorAll('#comm-wysylki tbody input[type="checkbox"]:not([disabled])');
+  const selCountEl = document.getElementById('selCount');
+  function updateSelCount(){
+    const checked = Array.from(rowChecks()).filter(c => c.checked).length;
+    if(selCountEl) selCountEl.textContent = checked;
+  }
+  if(selectAll){
+    selectAll.addEventListener('change', () => {
+      rowChecks().forEach(c => c.checked = selectAll.checked);
+      updateSelCount();
+    });
+    rowChecks().forEach(c => c.addEventListener('change', updateSelCount));
+  }
+  const sendSelectedBtn = document.getElementById('sendSelectedBtn');
+  if(sendSelectedBtn){
+    sendSelectedBtn.addEventListener('click', () => {
+      document.querySelectorAll('#comm-wysylki tbody tr').forEach(row => {
+        const cb = row.querySelector('input[type="checkbox"]');
+        if(cb && cb.checked && !cb.disabled){
+          const statusBadge = row.querySelector('td:last-child .badge');
+          if(statusBadge && statusBadge.textContent.trim() === 'DO WYSŁANIA'){
+            statusBadge.textContent = 'WYSŁANO';
+            statusBadge.className = 'badge';
+            statusBadge.style.cssText = 'background:rgba(0,226,139,0.12); color:var(--emerald-bright); border:1px solid rgba(0,226,139,0.3);';
+          }
+        }
+      });
+    });
+  }
+
+  // Klienci: klik w wiersz otwiera kartę klienta
+  const clientData = {
+    stellar:  { name:'Stellar Dynamics Sp. z o.o.', nip:'521-00-12-345', owner:'Anna Kowalska', plan:'Premium' },
+    nova:     { name:'Nova Corp Sp. z o.o.',        nip:'734-11-98-221', owner:'Jan Nowak',      plan:'Team' },
+    nebula:   { name:'Nebula Systems Jan Kowalczyk',nip:'889-22-10-004', owner:'Alex Wójcik',    plan:'Solo' },
+    quantum:  { name:'Quantum Financial S.A.',      nip:'612-77-30-889', owner:'Anna Kowalska',  plan:'Premium' },
+  };
+  document.querySelectorAll('.client-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const d = clientData[row.dataset.client];
+      if(!d) return;
+      document.getElementById('clientDetailName').textContent = d.name;
+      document.getElementById('clientDetailNip').textContent = d.nip;
+      document.getElementById('clientDetailOwner').textContent = d.owner;
+      document.getElementById('clientDetailPlan').textContent = d.plan;
+      document.querySelector('.client-tab[data-ctab="przeglad"]').click();
+      document.getElementById('clientDetailName').closest('.glass').scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+  });
+
+  // Karta klienta: przełączanie pod-zakładek
+  const clientTabs = document.querySelectorAll('.client-tab');
+  clientTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      clientTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.ctab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('ctab-' + tab.dataset.ctab).style.display = 'block';
+    });
+  });
+
+  // Chat thread switching
+  const threads = document.querySelectorAll('.chat-thread');
+  threads.forEach(t => {
+    t.addEventListener('click', () => {
+      threads.forEach(x => x.style.background = 'transparent');
+      t.style.background = 'rgba(0,219,231,0.08)';
+      document.getElementById('chatTitle').textContent = t.dataset.name;
+    });
+  });
+
+  // Chat send demo
+  const chatInput = document.getElementById('chatInput');
+  const chatBody = document.getElementById('chatBody');
+  document.getElementById('chatSend').addEventListener('click', sendMsg);
+  chatInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMsg(); });
+  function sendMsg(){
+    const val = chatInput.value.trim();
+    if(!val) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble-out';
+    bubble.style.cssText = 'padding:14px 18px; max-width:65%; align-self:flex-end;';
+    bubble.textContent = val;
+    chatBody.appendChild(bubble);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    chatInput.value = '';
+  }
+</script>
+</body>
+</html>
