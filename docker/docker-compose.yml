@@ -38,6 +38,12 @@ services:
       REDIS_PORT: "6379"
       JWT_SECRET: dev-tylko-lokalnie-zmien-na-produkcji-0123456789
       FRONTEND_ORIGIN: http://localhost:5173
+      # Testy integracyjne celowo czytaja wlasne zmienne TEST_DB_*, zeby nigdy
+      # nie trafic w baze robocza - one kasuja i tworza tabele od nowa.
+      TEST_DB_HOST: mysql
+      TEST_DB_NAME: solidus_test
+      TEST_DB_USER: solidus
+      TEST_DB_PASSWORD: solidus
     depends_on:
       mysql:
         condition: service_healthy

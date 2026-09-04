@@ -2,10 +2,12 @@
 <!--
   Konfiguracja PHPUnit.
 
-  Szkielet yiisoft/app przychodzi z Codeception (katalog tests/Console,
-  tests/Web itd.) - te zestawy zostaja nietkniete. PHPUnit uruchamiamy na
-  wlasnym katalogu tests/Integration, zeby oba narzedzia sobie nie wchodzily
-  w droge.
+  Testy integracyjne czytaja wylacznie zmienne TEST_DB_*, nigdy DB_* aplikacji -
+  setUp() kasuje i tworzy tabele od nowa, wiec pomylka nazwy bazy oznaczalaby
+  utrate danych roboczych. Domyslnie celuja w baze `solidus_test`.
+
+  Szkielet yiisoft/app przychodzi z Codeception (tests/Console, tests/Web itd.);
+  te zestawy zostaja nietkniete i uruchamia je `composer test-codeception`.
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
@@ -20,11 +22,11 @@
 
     <php>
         <env name="APP_ENV" value="test"/>
-        <!-- Nadpisz przez zmienne srodowiskowe, jesli baza stoi gdzie indziej. -->
-        <env name="DB_HOST" value="127.0.0.1"/>
-        <env name="DB_PORT" value="3306"/>
-        <env name="DB_NAME" value="solidus_test"/>
-        <env name="DB_USER" value="solidus"/>
-        <env name="DB_PASSWORD" value="solidus"/>
+        <!-- Nadpisz przez zmienne srodowiskowe, jesli baza testowa stoi gdzie indziej. -->
+        <env name="TEST_DB_HOST" value="127.0.0.1"/>
+        <env name="TEST_DB_PORT" value="3306"/>
+        <env name="TEST_DB_NAME" value="solidus_test"/>
+        <env name="TEST_DB_USER" value="solidus"/>
+        <env name="TEST_DB_PASSWORD" value="solidus"/>
     </php>
 </phpunit>

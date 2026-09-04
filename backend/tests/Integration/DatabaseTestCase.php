@@ -6,6 +6,8 @@ namespace App\Tests\Integration;
 
 use App\Shared\Tenant\TenantContext;
 use PHPUnit\Framework\TestCase;
+use Yiisoft\Cache\ArrayCache;
+use Yiisoft\Db\Cache\SchemaCache;
 use Yiisoft\Db\Connection\ConnectionInterface;
 use Yiisoft\Db\Mysql\Connection;
 use Yiisoft\Db\Mysql\Driver;
@@ -51,18 +53,39 @@ abstract class DatabaseTestCase extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Testy uzywaja WYLACZNIE zmiennych TEST_DB_*, nigdy DB_* aplikacji.
+     *
+     * Rozdzielenie jest celowe: setUp() kasuje i tworzy tabele od nowa.
+     * Gdyby konfiguracja testow dziedziczyla DB_NAME ze srodowiska (a w
+     * kontenerze php dziedziczy), uruchomienie testow skasowaloby dane
+     * robocze deweloperowi. Dodatkowo nizej stoi bezpiecznik na nazwe bazy.
+     */
     private static function createConnection(): ConnectionInterface
     {
+        $database = (string) (getenv('TEST_DB_NAME') ?: 'solidus_test');
+
+        if (!str_contains($database, 'test')) {
+            self::fail(
+                "Odmawiam uruchomienia testow na bazie \"{$database}\" - jej nazwa nie zawiera "
+                . '"test", a testy kasuja tabele. Ustaw TEST_DB_NAME na baze testowa.',
+            );
+        }
+
         $dsn = new Dsn(
-            host: (string) (getenv('DB_HOST') ?: '127.0.0.1'),
-            databaseName: (string) (getenv('DB_NAME') ?: 'solidus_test'),
-            port: (string) (getenv('DB_PORT') ?: '3306'),
+            host: (string) (getenv('TEST_DB_HOST') ?: '127.0.0.1'),
+            databaseName: $database,
+            port: (string) (getenv('TEST_DB_PORT') ?: '3306'),
             options: ['charset' => 'utf8mb4'],
         );
 
         return new Connection(
-            new Driver((string) $dsn, (string) (getenv('DB_USER') ?: 'root'), (string) (getenv('DB_PASSWORD') ?: 'root')),
-            new \Yiisoft\Db\Cache\SchemaCache(new \Yiisoft\Cache\ArrayCache()),
+            new Driver(
+                (string) $dsn,
+                (string) (getenv('TEST_DB_USER') ?: 'solidus'),
+                (string) (getenv('TEST_DB_PASSWORD') ?: 'solidus'),
+            ),
+            new SchemaCache(new ArrayCache()),
         );
     }
 
