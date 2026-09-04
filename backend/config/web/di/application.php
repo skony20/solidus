@@ -28,7 +28,15 @@ return [
                     [
                         ErrorCatcher::class,
                         SessionMiddleware::class,
-                        CsrfTokenMiddleware::class,
+                        // CsrfTokenMiddleware ze szkieletu zostal tu celowo
+                        // pominiety. Chroni on formularze uwierzytelniane
+                        // ciasteczkiem sesji, a API Solidusa jest bezstanowe:
+                        // tozsamosc jedzie w naglowku Authorization, ktorego
+                        // przegladarka nie doklei automatycznie do zadania
+                        // z obcej strony. Ciasteczko refresh tokenu jest
+                        // dodatkowo SameSite=Strict i ograniczone do
+                        // /api/auth, wiec token CSRF nic by tu nie dodal,
+                        // a blokowalby kazdy POST z SPA.
                         RequestCatcherMiddleware::class,
                         Router::class,
                     ],

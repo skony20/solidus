@@ -2,15 +2,72 @@
 
 declare(strict_types=1);
 
+use App\Module\Account\Controller\AuthController;
+use App\Module\Account\Controller\RegistrationController;
+use App\Module\Aml\Controller\AmlController;
+use App\Module\Calendar\Controller\CalendarController;
+use App\Module\Client\Controller\ClientController;
+use App\Module\Communication\Controller\CommunicationController;
+use App\Module\Delegation\Controller\DelegationController;
+use App\Module\Finance\Controller\FinanceController;
+use App\Module\MissionControl\Controller\MissionControlController;
+use App\Module\Settings\Controller\SettingsController;
+use App\Module\Team\Controller\TeamController;
+use App\Module\Whistleblower\Controller\WhistleblowerController;
+use App\Shared\Http\CorsMiddleware;
+use App\Shared\Tenant\TenantMiddleware;
 use App\Web;
 use Yiisoft\Router\Group;
 use Yiisoft\Router\Route;
 
+/**
+ * Mapa adresow API Solidusa.
+ *
+ * Podzial jest prosty: /api/auth to trasy publiczne (nie da sie wymagac
+ * tokenu od kogos, kto sie wlasnie loguje), a cala reszta /api przechodzi
+ * przez TenantMiddleware, ktore ustala biuro i uzytkownika.
+ */
 return [
-    Group::create()
+    // Strona powitalna szkieletu - zostaje jako szybki test, ze backend zyje.
+    Route::get('/')
+        ->action(Web\HomePage\Action::class)
+        ->name('home'),
+
+    // --- Publiczne: rejestracja i logowanie -----------------------------
+    Group::create('/api/auth')
+        ->middleware(CorsMiddleware::class)
         ->routes(
-            Route::get('/')
-                ->action(Web\HomePage\Action::class)
-                ->name('home'),
+            Route::post('/register')->action([RegistrationController::class, 'register'])->name('auth/register'),
+            Route::post('/login')->action([AuthController::class, 'login'])->name('auth/login'),
+            Route::post('/refresh')->action([AuthController::class, 'refresh'])->name('auth/refresh'),
+            Route::post('/logout')->action([AuthController::class, 'logout'])->name('auth/logout'),
+        ),
+
+    // --- Chronione: wymagaja waznego access tokenu ----------------------
+    Group::create('/api')
+        ->middleware(CorsMiddleware::class)
+        ->middleware(TenantMiddleware::class)
+        ->routes(
+            Route::get('/auth/me')->action([AuthController::class, 'me'])->name('auth/me'),
+
+            // Modul wzorcowy - jedyny z pelnym CRUD-em.
+            Group::create('/clients')->routes(
+                Route::get('')->action([ClientController::class, 'index'])->name('clients/index'),
+                Route::post('')->action([ClientController::class, 'create'])->name('clients/create'),
+                Route::get('/{id:\d+}')->action([ClientController::class, 'view'])->name('clients/view'),
+                Route::put('/{id:\d+}')->action([ClientController::class, 'update'])->name('clients/update'),
+                Route::delete('/{id:\d+}')->action([ClientController::class, 'delete'])->name('clients/delete'),
+            ),
+
+            // Szkielety pozostalych modulow - jeden endpoint kontrolny kazdy.
+            Route::get('/mission-control')->action([MissionControlController::class, 'index'])->name('mission-control/index'),
+            Route::get('/aml')->action([AmlController::class, 'index'])->name('aml/index'),
+            Route::get('/delegacje')->action([DelegationController::class, 'index'])->name('delegacje/index'),
+            Route::get('/komunikacja')->action([CommunicationController::class, 'index'])->name('komunikacja/index'),
+            Route::get('/kalendarz')->action([CalendarController::class, 'index'])->name('kalendarz/index'),
+            Route::get('/finanse')->action([FinanceController::class, 'index'])->name('finanse/index'),
+            Route::get('/zespol')->action([TeamController::class, 'index'])->name('zespol/index'),
+            Route::get('/sygnalisci')->action([WhistleblowerController::class, 'index'])->name('sygnalisci/index'),
+            Route::get('/ustawienia')->action([SettingsController::class, 'index'])->name('ustawienia/index'),
         ),
 ];
