@@ -1,16 +1,18 @@
 # Obraz PHP dla backendu Solidusa.
 #
-# Poza standardowym php-fpm potrzebujemy trzech rzeczy:
+# Poza standardowym php-fpm potrzebujemy:
 #  - pdo_mysql  -> polaczenie z baza,
-#  - redis      -> kolejka zadan (yiisoft/queue-redis wymaga ext-redis),
+#  - intl       -> poprawne sortowanie i formatowanie polskich tekstow,
 #  - composer   -> instalacja zaleznosci wewnatrz kontenera.
+#
+# Rozszerzenie ext-redis jest celowo NIEinstalowane - kolejka zadan jest
+# wylaczona, bo srodowisko docelowe nie ma Redisa. Instrukcja przywrocenia:
+# docs/ARCHITECTURE.md, sekcja "Kolejka".
 FROM php:8.2-fpm-alpine
 
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS linux-headers \
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && apk add --no-cache git unzip icu-dev oniguruma-dev \
     && docker-php-ext-install pdo_mysql intl opcache \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
     && apk del .build-deps
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

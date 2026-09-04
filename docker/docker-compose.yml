@@ -34,8 +34,6 @@ services:
       DB_NAME: solidus
       DB_USER: solidus
       DB_PASSWORD: solidus
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
       JWT_SECRET: dev-tylko-lokalnie-zmien-na-produkcji-0123456789
       FRONTEND_ORIGIN: http://localhost:5173
       # Testy integracyjne celowo czytaja wlasne zmienne TEST_DB_*, zeby nigdy
@@ -47,31 +45,12 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
-        condition: service_started
 
-  # Worker kolejki - ten sam obraz co php, tylko inna komenda.
-  # Obsluguje masowe wysylki maili i odswiezanie danych z aplikacji AML.
-  queue:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.php
-    command: php yii queue:listen-all
-    volumes:
-      - ../backend:/app
-    environment:
-      APP_ENV: dev
-      DB_HOST: mysql
-      DB_NAME: solidus
-      DB_USER: solidus
-      DB_PASSWORD: solidus
-      REDIS_HOST: redis
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    restart: unless-stopped
+  # UWAGA: nie ma tu usług `redis` ani `queue`. Środowisko docelowe nie ma
+  # Redisa, więc kolejka zadań jest wyłączona - zadania, które miały działać
+  # w tle (masowe wysyłki e-mail, odświeżanie danych AML), będą na razie
+  # wykonywane synchronicznie. Jak to przywrócić: docs/ARCHITECTURE.md,
+  # sekcja "Kolejka".
 
   mysql:
     image: mysql:8.0
@@ -93,11 +72,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
 
   mailhog:
     # W dev zaden mail nie wychodzi na zewnatrz - wszystko laduje tutaj.

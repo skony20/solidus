@@ -62,10 +62,11 @@ return [
             'charset' => 'utf8mb4',
         ],
 
-        'redis' => [
-            'host' => Env::string('REDIS_HOST', '127.0.0.1'),
-            'port' => Env::int('REDIS_PORT', 6379),
-        ],
+        // Redis i kolejka zadan sa na razie wylaczone - srodowisko docelowe
+        // nie ma Redisa. Zadania, ktore mialy trafic do kolejki (masowe
+        // wysylki e-mail, odswiezanie danych AML), wykonuja sie synchronicznie
+        // albo czekaja na moment, gdy Redis bedzie dostepny.
+        // Przywrocenie: patrz docs/ARCHITECTURE.md, sekcja "Kolejka".
 
         'jwt' => [
             // HS256; sekret MUSI byc nadpisany na produkcji przez zmienna srodowiskowa.

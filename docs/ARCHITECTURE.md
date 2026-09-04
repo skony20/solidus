@@ -39,13 +39,15 @@ Stan na 4 września 2026. Opisuje szkielet pod 8-tygodniowe MVP, nie produkt.
 │  │ Entity / DTO                                                │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └───────┬──────────────────────┬──────────────────┬────────────────┘
-        │                      │                  │
-   ┌────▼─────┐         ┌──────▼──────┐   ┌───────▼────────────────┐
-   │ MySQL 8  │         │ Redis       │   │ Aplikacje zewnętrzne   │
+        │                      ┆                  │
+   ┌────▼─────┐         ┌ ─ ─ ─▼─ ─ ─ ┐   ┌───────▼────────────────┐
+   │ MySQL 8  │           Redis           │ Aplikacje zewnętrzne   │
    │ dane +   │         │ kolejka     │   │ AML / DelegoApp /      │
-   │ audit    │         │ zadań       │   │ Sygnaliści (REST)      │
-   └──────────┘         └─────────────┘   └────────────────────────┘
+   │ audit    │           WYŁĄCZONE       │ Sygnaliści (REST)      │
+   └──────────┘         └ ─ ─ ─ ─ ─ ─ ┘   └────────────────────────┘
 ```
+
+Redis narysowany linią przerywaną **nie istnieje w tej wersji** — środowisko docelowe go nie ma. Konsekwencje opisuje sekcja 2.9.
 
 ---
 
@@ -57,7 +59,7 @@ Yii3 wymusza to, czego Yii2 tylko pozwalał: kontener DI zamiast globalnego `Yii
 
 Symfony byłby równie dobrym wyborem technicznie. Yii3 wybrano ze względu na znajomość ekosystemu Yii w zespole i mniejszą powierzchnię do opanowania.
 
-**Koszt tej decyzji, świadomie przyjęty:** Yii3 ma mniejszy ekosystem. `yiisoft/queue` i `yiisoft/queue-redis` nie mają jeszcze stabilnego tagu — instalujemy je z `@dev`. Przed produkcją trzeba przypiąć konkretny commit.
+**Koszt tej decyzji, świadomie przyjęty:** Yii3 ma mniejszy ekosystem. Najwyraźniej widać to po `yiisoft/queue` — nie ma stabilnego tagu i wymagałby instalacji z `@dev`. Ponieważ kolejka jest teraz wyłączona (sekcja 2.9), problem nie dotyczy tej wersji: wszystkie zależności są stabilne, a `composer install` nie potrzebuje żadnych obejść.
 
 **Yii3 nie ma ActiveRecord w rdzeniu.** To wyszło nam na dobre: encje są zwykłymi obiektami PHP, a mapowanie robi repozytorium. Dzięki temu nie da się przypadkiem wykonać zapytania z pominięciem filtra po tenancie — bo nie ma metody `Client::find()`, którą można by wywołać z dowolnego miejsca.
 
@@ -175,11 +177,41 @@ Makieta `docs/design/solidus.html` jest źródłem prawdy dla wyglądu. Została
 
 Tailwind przypięto do wersji **3.4**, a nie 4.x. Wersja 4 przenosi konfigurację do CSS (`@theme`) i nie generuje `tailwind.config.ts`; przy założonym mapowaniu tokenów w pliku konfiguracyjnym wersja 3 jest zgodna z tym, jak projekt ma być utrzymywany.
 
-### 2.9 Kolejka
+### 2.9 Kolejka — WYŁĄCZONA
 
-`yiisoft/queue` z adapterem Redis, kanał `solidus`. Przewidziane zastosowania: masowe wysyłki e-mail (moduł Komunikacja) i odświeżanie danych z aplikacji AML. Wysyłka do 300 klientów w cyklu żądania HTTP blokowałaby połączenie na minuty i wywracała się przy pierwszym timeoucie.
+**Stan: brak kolejki i brak Redisa.** Środowisko docelowe nie udostępnia Redisa, więc `yiisoft/queue`, `yiisoft/queue-redis`, usługi `redis` i `queue` w Dockerze oraz rozszerzenie `ext-redis` w obrazie PHP zostały usunięte. Nie są zakomentowane ani „uśpione" — w kodzie nie ma po nich śladu poza tym akapitem.
 
-Worker działa jako osobna usługa `queue` w `docker-compose.yml` — ten sam obraz, inna komenda.
+Skutki uboczne są pozytywne: wszystkie zależności backendu są teraz **stabilne**, a `composer install` działa bez `--ignore-platform-req=ext-redis`.
+
+**Czego to nas kosztuje.** Zadania, które miały działać w tle, muszą działać w cyklu żądania HTTP:
+
+| Zadanie | Konsekwencja braku kolejki |
+|---|---|
+| Masowa wysyłka e-mail (moduł Komunikacja) | Żądanie trwa tyle, ile wysyłka. Przy 300 klientach to minuty i realne ryzyko timeoutu nginx/PHP. **To jest blokada dla tego modułu**, nie niedogodność. |
+| Odświeżanie scoringu AML | Użytkownik czeka na odpowiedź zewnętrznej aplikacji. Do zniesienia przy pojedynczym kliencie, nie do zniesienia przy przeliczaniu całej bazy. |
+
+Żaden z tych modułów nie jest jeszcze zaimplementowany, więc dziś nic nie jest zepsute. **Ale zanim moduł Komunikacja wejdzie do prac, trzeba podjąć decyzję** — inaczej powstanie funkcja, która wywraca się na produkcji przy pierwszej większej wysyłce.
+
+**Opcje na moment, gdy kolejka będzie potrzebna:**
+
+1. **Redis wraca** — najprostsze, jeśli infrastruktura się zmieni. Instrukcja poniżej.
+2. **Kolejka na MySQL** (`yiisoft/queue-db`) — bez nowej infrastruktury, wolniejsza, ale przy skali biura rachunkowego całkowicie wystarczająca. **Rekomendacja**, jeśli Redis pozostaje niedostępny.
+3. **Cron plus tabela zadań** — najbardziej prymitywne, ale bez żadnych zależności.
+
+**Jak przywrócić wariant Redisowy:**
+
+```bash
+cd backend
+composer require "yiisoft/queue:^3.0@dev" "yiisoft/queue-redis:@dev" --ignore-platform-req=ext-redis
+```
+
+1. W `docker/Dockerfile.php` przywróć `pecl install redis && docker-php-ext-enable redis` (oraz `linux-headers` w `.build-deps`).
+2. W `docker/docker-compose.yml` przywróć usługę `redis` (`redis:7-alpine`, port 6379), usługę `queue` (ten sam obraz co `php`, komenda `php yii queue:listen-all`) i zmienne `REDIS_HOST` / `REDIS_PORT` w usłudze `php`.
+3. W `config/common/params.php` przywróć sekcję `solidus.redis` (host, port z `Env`).
+4. Odtwórz `config/common/di/queue.php`: definicja `Redis::class` i `QueueProviderInterface` → `Yiisoft\Queue\Redis\QueueProvider` z `channelName: 'solidus'`.
+5. Odkomentuj `REDIS_HOST` / `REDIS_PORT` w `backend/.env.example`.
+
+Historia Git zawiera działającą wersję tej konfiguracji (commit `dff781c` i wcześniejsze) — najszybciej przywrócić ją stamtąd.
 
 ---
 
@@ -220,7 +252,7 @@ Szkielet `yiisoft/app` przychodzi z Codeception; te zestawy zostały nietknięte
 
 Rzeczy świadomie odłożone — do rozstrzygnięcia przed produkcją:
 
-1. **`yiisoft/queue` i `yiisoft/queue-redis` na `@dev`.** Nie mają stabilnego tagu dla Yii3. Przypiąć konkretny commit przed wdrożeniem.
+1. **Brak kolejki zadań** (sekcja 2.9). Środowisko nie ma Redisa. Dopóki nie ma modułu Komunikacja, nic to nie blokuje — ale **decyzja o wariancie kolejki musi zapaść przed rozpoczęciem prac nad masowymi wysyłkami**, nie po nich. Rekomendacja przy braku Redisa: `yiisoft/queue-db`.
 2. **`vimeo/psalm` usunięty z `require-dev`** — wymaga PHP 8.2.27, środowisko ma 8.2.26. Przywrócić po aktualizacji PHP.
 3. **Brak ekranu rejestracji.** Endpoint `POST /api/auth/register` działa, interfejsu do niego nie ma. Pierwsze biuro zakłada się poleceniem `curl`.
 4. **Brak autoryzacji ról.** Role są w tokenie (`roles`) i w bazie, ale żaden endpoint ich nie sprawdza — każdy zalogowany użytkownik biura może wszystko. `yiisoft/access` jest zainstalowany, kontrola nie jest podpięta.
@@ -230,6 +262,7 @@ Rzeczy świadomie odłożone — do rozstrzygnięcia przed produkcją:
 8. **Rate limiting na `/api/auth/login`.** Brak — do dodania przed wystawieniem na świat.
 9. **`Http*ApiClient` to stuby.** Kontrakty DTO wymagają potwierdzenia z zespołami zewnętrznych aplikacji.
 10. **Sekret JWT w `docker-compose.yml`** jest wartością deweloperską. Na produkcji musi pochodzić z sekretów środowiska; aplikacja go nie waliduje pod kątem długości.
+11. **Wolne odpowiedzi API na Windowsie: ~3 s na żądanie** (zmierzone: 3,0–6,7 s dla `GET /api/aml`, z czego 0,48 s to samo wczytanie autoloadera). Przyczyną jest bind-mount katalogu z dysku Windows do kontenera — każde żądanie odczytuje kilka tysięcy plików z `vendor/` przez granicę systemów plików. To nie jest problem aplikacji: na Linuksie i na produkcji nie występuje. Obejścia, w kolejności skuteczności: (a) trzymać repozytorium w systemie plików WSL2 (`\\wsl$\...`), a nie na `D:\`; (b) `opcache.validate_timestamps=0` w obrazie — szybko, ale wymaga restartu kontenera po każdej zmianie kodu; (c) zaakceptować na czas developmentu.
 
 ---
 
@@ -252,6 +285,6 @@ cd backend && composer test
 cd frontend && npm test
 ```
 
-Praca lokalna bez Dockera wymaga `--ignore-platform-req=ext-redis` przy `composer install`, jeśli lokalny PHP nie ma rozszerzenia redis.
+Wszystkie zależności są stabilne i nie wymagają rozszerzeń spoza standardu — `composer install` działa bez żadnych flag obejściowych, także poza Dockerem.
 
-Porty: API `:8080`, SPA `:5173`, MySQL `:3306`, Mailhog `:8025`, Redis `:6379`.
+Porty: API `:8080`, SPA `:5173`, MySQL `:3306`, Mailhog `:8025`.

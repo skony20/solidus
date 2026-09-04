@@ -19,8 +19,11 @@ Najprościej wyobrazić sobie Solidusa jako **biuro**:
 | **Frontend** (Vue) | recepcja i sala obsługi | To, co widzisz na ekranie: menu, tabele, formularze. Sam nic nie pamięta — o wszystko pyta zaplecze. |
 | **Backend** (Yii3/PHP) | zaplecze i kierownik biura | Pilnuje reguł: czy NIP jest poprawny, czy masz prawo zobaczyć te dane, co zapisać do archiwum. |
 | **Baza danych** (MySQL) | segregatory w szafie | Trwałe przechowywanie: klienci, użytkownicy, dziennik zmian. |
-| **Kolejka** (Redis) | skrzynka „do zrobienia" | Zadania, które trwają długo — np. wysyłka maila do 300 klientów. |
 | **Archiwum** (audit log) | dziennik korespondencji | Zapis każdej zmiany: kto, kiedy, co i z jakiego komputera. |
+
+W tym zestawieniu brakuje jednego elementu, który normalnie by tu był: **skrzynki „do zrobienia"** — czyli miejsca, gdzie odkładane są zadania trwające długo, na przykład wysyłka maila do 300 klientów. Nazywa się to kolejką i wymaga dodatkowego programu (Redis), którego docelowy serwer na razie nie ma. Dlatego w tej wersji kolejki nie ma wcale.
+
+Dziś to niczego nie psuje, bo moduł do masowych wysyłek jeszcze nie powstał. Ale trzeba o tym pamiętać: **bez kolejki wysyłka do 300 klientów oznacza, że przeglądarka czeka kilka minut na jedno kliknięcie** i najprawdopodobniej się rozłączy. Zanim ten moduł zacznie powstawać, trzeba zdecydować, skąd weźmiemy kolejkę. Możliwości opisuje [ARCHITECTURE.md](ARCHITECTURE.md) w sekcji 2.9 — najprostsza z nich nie wymaga żadnego nowego serwera, bo wykorzystuje bazę danych, którą i tak mamy.
 
 Frontend i backend to dwa osobne programy, które rozmawiają ze sobą przez internet. Brzmi to jak komplikacja, ale daje konkretną korzyść: gdy w przyszłości powstanie aplikacja na telefon, będzie rozmawiać z tym samym zapleczem, bez przepisywania reguł biznesowych od nowa.
 
@@ -206,7 +209,7 @@ Powiedzmy, że chcesz dodać moduł **Umowy**. Kolejność jest zawsze taka sama
 
 **Refresh token** — druga przepustka, ważna **30 dni**, służąca wyłącznie do wyrobienia nowej 15-minutowej. Leży w ciasteczku, którego JavaScript strony nie może odczytać, więc jest trudniejsza do wykradzenia. Dzięki temu nie logujesz się co kwadrans, a mimo to krótka przepustka pozostaje krótka. Przy każdym odświeżeniu stara jest unieważniana — jeśli ktoś ukradł kopię, przestaje ona działać, gdy Ty odświeżysz sesję.
 
-**Kolejka** — lista zadań „do zrobienia później". Gdy klikasz „wyślij do wszystkich klientów", aplikacja nie każe Ci czekać kilku minut na 300 maili: wpisuje zadanie do kolejki i odpowiada od razu, a osobny proces wysyła je w tle.
+**Kolejka** — lista zadań „do zrobienia później". Gdy klikasz „wyślij do wszystkich klientów", aplikacja nie każe Ci czekać kilku minut na 300 maili: wpisuje zadanie do kolejki i odpowiada od razu, a osobny proces wysyła je w tle. **W tej wersji Solidusa kolejki nie ma** — wymaga programu (Redis), którego docelowy serwer nie udostępnia. Szczegóły i możliwe rozwiązania: ARCHITECTURE.md, sekcja 2.9.
 
 **Audit log (dziennik zmian)** — zapis każdej zmiany danych: kto, kiedy, co zmienił i z jakiego adresu. Wymóg przepisów AML i RODO. Zapisujemy tylko pola, które faktycznie się zmieniły, żeby dziennik dało się czytać.
 

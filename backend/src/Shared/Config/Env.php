@@ -8,7 +8,7 @@ namespace App\Shared\Config;
  * Cienki odczyt zmiennych srodowiskowych na potrzeby plikow konfiguracyjnych.
  *
  * Aplikacyjne flagi (APP_ENV, APP_DEBUG) obsluguje {@see \App\Environment};
- * ta klasa dotyczy parametrow infrastrukturalnych Solidusa (baza, redis, JWT).
+ * ta klasa dotyczy parametrow infrastrukturalnych Solidusa (baza, JWT).
  */
 final class Env
 {
