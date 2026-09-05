@@ -5,19 +5,19 @@
 Order allow,deny
 Allow from all
 
-# Uchwyt PHP. Na tym hostingu wersje PHP wybiera sie wpisem AddHandler, a nie
-# konfiguracja serwera - i wpis NIE dziedziczy sie do katalogu glownego
-# subdomeny, bo ten lezy pod `public_html/`, ale ponizej pliku .htaccess, ktory
-# go deklaruje. Bez tej linii kazde zadanie do pliku .php konczy sie bledem 500
-# z pusta trescia - PHP po prostu nie jest uruchamiane.
+# Uchwyt PHP, wskazany jawnie zamiast polegac na ustawieniu z panelu -
+# ten katalog (patrz sciezka w REMOTE_APP_DIR, docs/DEPLOY.md) jedzie
+# wewnatrz katalogu domeny SPA i dzieli z nia wersje PHP, ale jawny wpis
+# nie zaszkodzi, a chroni przed cicha zmiana wersji domyslnej na koncie.
 #
 # UWAGA PRZY ZMIANIE HOSTINGU: ta dyrektywa jest specyficzna dla Cyber-Folks.
-# Na serwerze bez tego uchwytu (np. nginx + php-fpm, jak w docker/nginx.conf)
-# jest zbedna, a przy innej nazwie uchwytu moze zaszkodzic - wtedy usun ja
-# albo podmien nazwe na obowiazujaca u nowego dostawcy.
+# Na serwerze bez niej (np. nginx + php-fpm, jak w docker/nginx.conf) jest
+# zbedna, a przy innej nazwie uchwytu moze zaszkodzic - wtedy usun ja albo
+# podmien nazwe na obowiazujaca u nowego dostawcy.
 AddHandler application/x-httpd-php85 php
 
-# Katalog glowny subdomeny api.* (hosting Cyber-Folks: Apache/LiteSpeed).
+# Katalog glowny backendu w obrebie domeny SPA (patrz frontend/public/.htaccess,
+# regula `RewriteRule ^api/ ...` - to ona kieruje tu ruch).
 #
 # Docker uzywa nginksa i pliku docker/nginx.conf; ten plik robi to samo dla
 # serwera na hostingu wspoldzielonym. Oba musza dawac ten sam efekt: kazde

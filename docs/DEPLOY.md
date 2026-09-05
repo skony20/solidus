@@ -2,86 +2,72 @@
 
 Automatyczne wdrożenie po pushu na `main`: `.github/workflows/deploy.yml`.
 
-Solidus to **dwie aplikacje**, więc i cele wdrożenia są dwa:
+## Układ na serwerze — jeden adres dla SPA i API
 
 ```
-solidus.norios.pl      → public_html/solidus/                ← zbudowana SPA (pliki statyczne)
-api.solidus.norios.pl  → public_html/solidus-api/public/     ← Yii3, katalog główny subdomeny
-                         public_html/solidus-api/            ← kod aplikacji + .htaccess z blokadą
-                         public_html/solidus-api/.env        ← sekrety, nigdy w repozytorium
+solidus.norios.pl              ← zbudowana SPA (frontend/dist), katalog domeny
+solidus.norios.pl/api-app/     ← Yii3 (backend), PODKATALOG tego samego katalogu
+solidus.norios.pl/api/...      ← przepisywane przez .htaccess SPA na api-app/public/index.php
 ```
 
-Runner GitHuba buduje `vendor/` (Composer) i `dist/` (Vite), bo żadnego z nich nie ma w repozytorium, a hosting współdzielony nie ma Node.js. Na serwer jedzie gotowy wynik.
+**To nie jest wybór estetyczny — to jedyny układ, który na tym hostingu w ogóle działa.** Dwa fakty, sprawdzone bezpośrednio na tym koncie, nie w dokumentacji dostawcy:
 
-**Dlaczego kod aplikacji leży w `public_html`, skoro nie powinien.** Cyber-Folks uruchamia PHP wyłącznie dla plików leżących fizycznie w `public_html`. Katalog aplikacji obok niego — układ poprawny z punktu widzenia bezpieczeństwa — daje na każde żądanie **500 z pustą treścią**, bo serwer nie ma czym wykonać `.php`. Sprawdzone również przez dowiązanie symboliczne: nie pomaga, liczy się ścieżka fizyczna.
+1. **Hosting uruchamia PHP wyłącznie dla plików fizycznie leżących w katalogu danej domeny.** Katalog aplikacji obok niego (nawet przez dowiązanie symboliczne) zwraca 500 z pustą treścią na każde żądanie — sprawdzone również przez działającą domenę, nie tylko przez zepsutą subdomenę niżej.
+2. **Osobna subdomena `api.*` (trzeciego poziomu) nie wykonuje PHP w ogóle**, niezależnie od tego, jaką wersję PHP i jaki katalog wskazano dla niej w panelu. Przyczyna nieznana, po stronie hostingu — próba naprawy kosztowała więcej niż przejście na jeden adres.
 
-Zamiast tego katalog aplikacji jest zablokowany plikiem `backend/.htaccess` (`Deny from all`), a `backend/public/.htaccess` zawiera jawne zezwolenie dla samego katalogu głównego subdomeny. Oba jadą z repozytorium, więc wdrożenie ich nie gubi. Sprawdzenie po każdej większej zmianie:
+Efekt uboczny jest pozytywny: SPA i API mają to samo pochodzenie (origin), więc CORS przestaje mieć znaczenie w praktyce (kod CORS zostaje w backendzie — przyda się np. przyszłemu klientowi mobilnemu).
 
-```bash
-curl -s -o /dev/null -w "%{http_code}
-" https://norios.pl/solidus-api/.env          # ma być 403
-curl -s -o /dev/null -w "%{http_code}
-" https://norios.pl/solidus-api/src/bootstrap.php  # ma być 403
-```
+**Bezpieczeństwo katalogu backendu, mimo że leży „w środku" SPA, pilnuje wyłącznie `.htaccess`:**
+- `backend/.htaccess` (`Deny from all`, **stara składnia** — `Require all denied` z Apache 2.4 jest na tym serwerze po cichu ignorowana, sprawdzone) blokuje CAŁY katalog aplikacji.
+- `backend/public/.htaccess` daje jawne zezwolenie wyłącznie dla katalogu `public/` (kontra blokada wyżej) i deklaruje uchwyt PHP.
+- `frontend/public/.htaccess` ma regułę `RewriteRule ^api/ api-app/public/index.php [L]` PRZED regułą fallbacku SPA — inaczej fallback przechwyciłby żądania do API i zwracał im `index.html` zamiast JSON-a.
+
+Runner buduje `vendor/` (Composer) i `dist/` (Vite), bo żadnego z nich nie ma w repozytorium, a hosting współdzielony nie ma Node.js. Na serwer jedzie gotowy wynik.
 
 ---
 
-## Krok 0. Sprawdź wersję PHP — to jest warunek konieczny
+## Krok 0. Sprawdź wersję PHP — warunek konieczny
 
 `composer.json` ma `"php": "~8.5.0"`. Composer zapisuje tę wersję w `vendor/composer/platform_check.php`, więc **na PHP starszym niż 8.5 aplikacja nie wstanie w ogóle** — zwróci błąd 500 przy pierwszym żądaniu.
 
-Po zalogowaniu przez SSH:
+**Na koncie `lyvelmikov` (s66.cyber-folks.pl) PHP 8.5 jest dostępne, ale nie jako domyślne w konsoli:**
 
 ```bash
-php -v
-# oraz sprawdź, jakie wersje daje hosting:
-ls /usr/local/php*/bin/php 2>/dev/null || ls /opt/alt/php*/usr/bin/php 2>/dev/null
+php -v        # 8.2 - domyslna wersja konta, NIE uzywac do Solidusa
+php85 -v      # 8.5 - ta wersja liczy sie dla aplikacji
 ```
 
-W panelu Cyber-Folks wersję PHP ustawia się osobno **dla każdej domeny i subdomeny** — subdomena `api.` musi mieć 8.5, główna domena nie ma znaczenia (serwuje same pliki statyczne).
-
-**W konsoli to osobna sprawa.** Domyślny `php` na tym koncie to 8.2, niezależnie od ustawienia domeny. Każdą komendę projektu wywołuj przez `php85`:
+**Każdą komendę projektu wywołuj przez `php85`, nigdy przez samo `php`:**
 
 ```bash
-php85 -v                    # sprawdzenie
-php85 yii migrate:up        # zamiast `php yii migrate:up`
+php85 yii migrate:up          # zamiast `php yii migrate:up`
+php85 yii admin:grant ...
+php85 -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
 ```
 
 Pełna ścieżka, gdyby `php85` zniknęło z PATH: `/opt/alt/php85/usr/bin/php`.
 
-**Jeśli hostingu nie stać na 8.5:** nie ma sensu iść dalej z wdrożeniem. Trzeba wtedy poluzować wymaganie w `composer.json` do wersji dostępnej na serwerze (`~8.4.0`), przebudować `composer.lock` i przetestować projekt na tej wersji — kod nie używa dziś składni wyłącznej dla 8.5, ale to trzeba potwierdzić testami, a nie założyć.
-
-Wersja PHP w kroku „Zainstaluj PHP 8.5" w workflow **musi być ta sama, co na serwerze**.
+Wersja PHP dla **strony WWW** (nie konsoli) ustawia się w panelu, dla domeny `norios.pl` (backend jedzie teraz jako jej podkatalog — nie ma tu osobnej subdomeny do konfigurowania).
 
 ---
 
 ## Krok 1. Gałąź `main`
 
-Repozytorium jest dziś na gałęzi `master`, a workflow reaguje na `main`. Wybierz jedno:
+Workflow reaguje na push do `main`. Sprawdź, że tam pracujesz:
 
 ```bash
-# albo zmień nazwę gałęzi (zalecane — zgodne z ustawieniem repo na GitHubie)
-git branch -m master main
-git push -u origin main
-# w GitHubie: Settings → General → Default branch → main
-
-# albo zostaw master i popraw wyzwalacz w .github/workflows/deploy.yml:
-#   branches: [master]
+git branch --show-current
 ```
 
 ---
 
 ## Krok 2. Klucz SSH do wdrożeń
 
-Klucz generujesz **u siebie**, na serwer trafia tylko część publiczna, do GitHuba tylko prywatna.
-
 ```bash
 ssh-keygen -t ed25519 -C "github-deploy-solidus" -f ~/.ssh/solidus_deploy -N ""
 ```
 
-Powstaną dwa pliki: `solidus_deploy` (prywatny) i `solidus_deploy.pub` (publiczny).
-
-Klucz publiczny dopisz na serwerze do `~/.ssh/authorized_keys` — przez panel Cyber-Folks (SSH → klucze) albo ręcznie:
+Klucz publiczny na serwer:
 
 ```bash
 ssh -p 222 lyvelmikov@s66.cyber-folks.pl
@@ -90,11 +76,13 @@ echo "ssh-ed25519 AAAA... github-deploy-solidus" >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
 
-Sprawdź, czy działa bez hasła:
+Sprawdź, czy działa bez hasła (dokładnie tak samo łączy się runner GitHuba):
 
 ```bash
 ssh -i ~/.ssh/solidus_deploy -p 222 lyvelmikov@s66.cyber-folks.pl "echo polaczenie-ok"
 ```
+
+Jeśli dostajesz `Corrupted MAC on input` — to problem samego łącza (router, Wi-Fi, VPN), nie klucza; nie wpływa na runnera GitHuba, który łączy się z innej sieci. Można spróbować `-o Ciphers=aes128-ctr -o MACs=hmac-sha2-512`, ale jeśli i to zawiedzie, wystarczy sprawdzić klucz bezpośrednio w Actions (krok 5) zamiast lokalnie.
 
 ---
 
@@ -102,26 +90,24 @@ ssh -i ~/.ssh/solidus_deploy -p 222 lyvelmikov@s66.cyber-folks.pl "echo polaczen
 
 `Settings → Secrets and variables → Actions`.
 
-**Zakładka Secrets** (`New repository secret`):
+**Zakładka Secrets:**
 
-| Nazwa | Wartość | Uwagi |
+| Nazwa | Wartość dla `norios.pl` | Uwagi |
 |---|---|---|
-| `SSH_KEY` | cała zawartość `~/.ssh/solidus_deploy` | Z linijkami `-----BEGIN…` i `-----END…` włącznie |
-| `SSH_HOST` | `s66.cyber-folks.pl` | Adres serwera z panelu, nie domena |
+| `SSH_KEY` | zawartość `~/.ssh/solidus_deploy` (cały plik, bez `.pub`) | Z liniami `-----BEGIN…`/`-----END…` włącznie |
+| `SSH_HOST` | `s66.cyber-folks.pl` | Adres serwera, nie domena aplikacji |
 | `SSH_USER` | `lyvelmikov` | |
-| `SSH_PORT` | `222` | Można pominąć — workflow domyślnie używa 222 |
-| `REMOTE_APP_DIR` | `/home/lyvelmikov/domains/norios.pl/public_html/solidus-api` | Pełna ścieżka, **bez** ukośnika na końcu |
-| `REMOTE_WEB_DIR` | `/home/lyvelmikov/domains/norios.pl/public_html/solidus` | Katalog główny subdomeny SPA |
+| `SSH_PORT` | `222` | Można pominąć — workflow i tak domyślnie używa 222 |
+| `REMOTE_WEB_DIR` | `/home/lyvelmikov/domains/norios.pl/public_html/solidus` | Katalog domeny SPA |
+| `REMOTE_APP_DIR` | `/home/lyvelmikov/domains/norios.pl/public_html/solidus/api-app` | **Podkatalog** powyższego — nie osobna ścieżka |
 
-**Zakładka Variables** (`New repository variable`):
+**Zakładka Variables:**
 
 | Nazwa | Wartość |
 |---|---|
-| `VITE_API_URL` | `https://api.solidus.norios.pl` |
+| `VITE_API_URL` | `https://solidus.norios.pl` |
 
-`VITE_API_URL` jest zmienną, a nie sekretem, bo i tak trafia do plików JavaScript widocznych w przeglądarce. **Adres API jest wkompilowany w SPA** — jego zmiana wymaga ponownego zbudowania aplikacji, sama edycja plików na serwerze nic nie da.
-
-Po SSH ścieżki są pełne. To, co panel FTP pokazuje jako katalog główny, jest widokiem po `chroot` i wygląda inaczej — sprawdź faktyczną ścieżkę komendą `pwd` po zalogowaniu przez SSH.
+`VITE_API_URL` jest tym samym adresem co SPA (jeden origin) — **bez** `/api` na końcu, ten fragment dokleja już kod frontendu przy wywołaniach. Adres jest wkompilowany w pliki SPA w czasie budowania — zmiana wymaga ponownego wdrożenia, nie edycji na serwerze.
 
 ---
 
@@ -131,43 +117,29 @@ Po SSH ścieżki są pełne. To, co panel FTP pokazuje jako katalog główny, je
 
 ```bash
 ssh -p 222 lyvelmikov@s66.cyber-folks.pl
-cd ~/domains/norios.pl/public_html
-mkdir -p solidus-api/public solidus-api/runtime
-chmod 755 solidus-api
-chmod 775 solidus-api/runtime     # Yii musi mieć tu prawo zapisu
+mkdir -p ~/domains/norios.pl/public_html/solidus/api-app/public
+mkdir -p ~/domains/norios.pl/public_html/solidus/api-app/runtime
+chmod 775 ~/domains/norios.pl/public_html/solidus/api-app/runtime
 ```
 
-### 4b. Subdomena `api.solidus.norios.pl`
+### 4b. Baza danych
 
-W panelu Cyber-Folks: **Domeny → Subdomeny → Dodaj**.
+Panel: **Bazy danych → Dodaj**. Zanotuj nazwę bazy, użytkownika i hasło (Cyber-Folks dokleja do nich prefiks konta).
 
-- nazwa: `api.solidus`
-- katalog: `domains/norios.pl/public_html/solidus-api/public` ← **w środku** `public_html`, patrz uwaga na początku
-- PHP: **8.5**
-- SSL: włącz Let's Encrypt
-
-Kluczowy jest ten katalog. Wskazanie na `public/`, a nie na `backend/`, sprawia, że `src/`, `config/`, `vendor/` i `.env` są fizycznie poza zasięgiem przeglądarki — nawet gdyby `.htaccess` przestał działać.
-
-### 4c. Baza danych
-
-W panelu: **Bazy danych → Dodaj**. Zanotuj nazwę bazy, użytkownika i hasło — Cyber-Folks zwykle dokleja do nich prefiks konta.
-
-Sprawdź, co dostałeś, zanim pójdziesz dalej:
+Sprawdź wersję — **to jest MariaDB, nie MySQL 8**:
 
 ```bash
 mysql -u UZYTKOWNIK_BAZY -p NAZWA_BAZY -e "SELECT VERSION();"
 ```
 
-Serwer to **MariaDB 10.6**, nie MySQL 8 — dlatego migracje używają kolacji `utf8mb4_unicode_ci`. Kolacja `utf8mb4_0900_ai_ci` istnieje wyłącznie w MySQL 8 i na tym serwerze migracje wywracały się na błędzie 1273 „Unknown collation".
+Domyślna kolacja bazy założonej przez panel to zwykle `utf8mb3_general_ci` — **nie** utf8mb4. Migracje Solidusa mają `utf8mb4_unicode_ci` wymuszone jawnie w każdej tabeli (nie `utf8mb4_0900_ai_ci`, który istnieje wyłącznie w MySQL 8 i dawał błąd 1273 „Unknown collation" na tym serwerze), więc polskie znaki działają mimo to — ale każda NOWA tabela dodana bez jawnego `CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci` odziedziczy utf8mb3 i po cichu obetnie takie znaki.
 
-Domyślna kolacja samej bazy założonej przez panel to `utf8mb3_general_ci` — czyli **nie** utf8mb4. Tabele Solidusa mają utf8mb4 wymuszone jawnie w każdej migracji, a połączenie ustawia `charset=utf8mb4`, więc polskie znaki i emoji działają. Ale każda nowa tabela utworzona **bez** jawnego `CHARSET=utf8mb4` odziedziczy utf8mb3 i cicho obetnie takie znaki.
+### 4c. Plik `.env`
 
-### 4d. Plik `.env` na serwerze
-
-Tego pliku **nie wysyła wdrożenie** (jest na liście wykluczeń), więc tworzysz go raz, ręcznie:
+Ten plik **nie jest wysyłany przez wdrożenie** (na liście `--exclude`) — tworzysz go raz, ręcznie:
 
 ```bash
-cd ~/domains/norios.pl/public_html/solidus-api
+cd ~/domains/norios.pl/public_html/solidus/api-app
 cat > .env <<'EOF'
 APP_ENV=prod
 APP_DEBUG=false
@@ -188,17 +160,17 @@ EOF
 chmod 600 .env
 ```
 
-Sekret wygeneruj **na serwerze** i wklej do pliku:
+Sekret JWT wygeneruj na serwerze, wersją PHP 8.5:
 
 ```bash
 php85 -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
 ```
 
-Trzy rzeczy, które łatwo tu przeoczyć:
+Trzy rzeczy łatwe do przeoczenia:
 
 - **`APP_DEBUG=false` jest obowiązkowe.** Przy `true` strona błędu pokazuje ślad stosu razem z hasłem do bazy.
 - **`JWT_SECRET` musi mieć min. 32 znaki.** Aplikacja odmówi startu z krótszym — celowo, bo pusty sekret pozwoliłby każdemu wystawić sobie token dowolnego użytkownika.
-- **`FRONTEND_ORIGIN` musi być dokładnym adresem SPA**, z `https://` i bez ukośnika na końcu. Ta wartość trafia do nagłówka CORS; literówka oznacza, że przeglądarka zablokuje każde żądanie do API.
+- **`FRONTEND_ORIGIN` = dokładnie ten sam adres, pod którym stoi SPA** (`https://solidus.norios.pl`, bez ukośnika na końcu). Skoro API i SPA mają teraz jedno pochodzenie, ta wartość rzadko kiedy zadziała inaczej niż poprawnie — ale zostaje w kodzie jako zabezpieczenie na wypadek żądań z innego originu (np. narzędzia deweloperskie, przyszły klient mobilny).
 
 ---
 
@@ -208,22 +180,30 @@ Trzy rzeczy, które łatwo tu przeoczyć:
 git push origin main
 ```
 
-Postęp: zakładka **Actions** w repozytorium. Można też uruchomić ręcznie: **Actions → Deploy na serwer (SSH) → Run workflow**.
+Postęp: zakładka **Actions**. Można też uruchomić ręcznie: **Actions → Deploy na serwer (SSH) → Run workflow**.
 
-Po zakończeniu — migracje, raz, ręcznie:
+Po zakończeniu — migracje, ręcznie, wersją PHP 8.5:
 
 ```bash
 ssh -p 222 lyvelmikov@s66.cyber-folks.pl
-cd ~/domains/norios.pl/public_html/solidus-api
+cd ~/domains/norios.pl/public_html/solidus/api-app
 php85 yii migrate:up
 ```
 
-Migracje **nie idą automatycznie** i to jest decyzja projektowa: migracja odpalona przy każdym pushu potrafi zablokować tabelę w środku dnia pracy biura. Uruchamiasz je świadomie, po każdym wdrożeniu, które dodało pliki w `Module/*/Migration/`.
+Migracje **nie idą automatycznie** — decyzja projektowa: migracja odpalona przy każdym pushu potrafi zablokować tabelę w środku dnia pracy biura. Uruchamiasz je świadomie, po każdym wdrożeniu, które dodało pliki w `Module/*/Migration/`.
 
-Konto administratora systemu (dostęp do cennika) — też z konsoli:
+Pierwsze biuro (ekranu rejestracji jeszcze nie ma):
 
 ```bash
-php85 yii admin:grant slug-biura adres@email.pl
+curl -s -X POST https://solidus.norios.pl/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"tenantName":"Nazwa biura","email":"twoj@email.pl","password":"tu-dlugie-haslo","name":"Imie Nazwisko"}'
+```
+
+W odpowiedzi jest `slug` biura. Konto administratora systemu (panel `/admin/cennik` i `/admin/biura`) — z konsoli:
+
+```bash
+php85 yii admin:grant slug-biura twoj@email.pl
 ```
 
 ---
@@ -231,20 +211,16 @@ php85 yii admin:grant slug-biura adres@email.pl
 ## Krok 6. Sprawdź, czy działa
 
 ```bash
-# API odpowiada i widzi bazę
-curl -s https://api.solidus.norios.pl/api/pricing
-
-# CORS zwraca właściwe pochodzenie
-curl -s -I -X OPTIONS https://api.solidus.norios.pl/api/auth/login \
-  -H "Origin: https://solidus.norios.pl" -H "Access-Control-Request-Method: POST" \
-  | grep -i access-control-allow-origin
+curl -s https://solidus.norios.pl/api/pricing              # JSON z cennikiem
+curl -s -o /dev/null -w "%{http_code}\n" https://solidus.norios.pl/api-app/.env            # ma byc 403
+curl -s -o /dev/null -w "%{http_code}\n" https://solidus.norios.pl/api-app/src/bootstrap.php  # ma byc 403
 ```
 
 W przeglądarce:
 
-1. `https://solidus.norios.pl` — strona informacyjna z cennikiem (cennik = dowód, że SPA rozmawia z API).
-2. `https://solidus.norios.pl/klienci` — **odśwież stronę**. Jeśli widzisz 404, `.htaccess` nie zadziałał (patrz niżej).
-3. Zaloguj się, odśwież — sesja ma przetrwać. Jeśli wyrzuca do logowania, sprawdź HTTPS: ciasteczko refresh ma flagę `Secure` i po HTTP nie zostanie zapisane.
+1. `https://solidus.norios.pl` — strona informacyjna z cennikiem (dowód, że SPA rozmawia z API).
+2. `https://solidus.norios.pl/klienci` — **odśwież stronę**. 404 tutaj = `.htaccess` nie zadziałał.
+3. Zaloguj się, odśwież — sesja ma przetrwać.
 
 ---
 
@@ -252,12 +228,14 @@ W przeglądarce:
 
 | Objaw | Przyczyna |
 |---|---|
-| Błąd 500 na całym API | Najczęściej wersja PHP (krok 0) albo brak praw zapisu do `runtime/`. Log: `public_html/solidus-api/runtime/logs/` |
-| `Brak tokenu dostepowego` mimo zalogowania | Serwer zjada nagłówek `Authorization`. Obsługuje to `backend/public/.htaccess` — sprawdź, czy plik dojechał |
-| 404 po odświeżeniu na `/klienci` | Brak `.htaccess` w `public_html` lub wyłączony `mod_rewrite`. Plik jedzie z `frontend/public/.htaccess` przez `dist/` |
-| Przeglądarka blokuje żądania (CORS) | `FRONTEND_ORIGIN` w `.env` nie zgadza się co do znaku z adresem SPA |
-| Cennik pusty, reszta strony działa | API nie odpowiada albo `VITE_API_URL` wskazuje zły adres. Zmiana wymaga **ponownego wdrożenia**, nie edycji na serwerze |
-| Zmiany w kodzie nie widać | Cache opcode PHP. Restart PHP z panelu Cyber-Folks |
+| Błąd 500 na całym API, nawet na pustym pliku `.php` | Katalog backendu wylądował poza `public_html` albo poza katalogiem domeny SPA — na tym hostingu to zawsze 500, patrz sekcja o układzie na początku |
+| 404 na `/api/...` | Reguła `RewriteRule ^api/ ...` w `.htaccess` SPA brakuje albo stoi PO regule fallbacku, nie przed nią |
+| `Brak tokenu dostepowego` mimo zalogowania | Serwer zjada nagłówek `Authorization` — patrz reguła w `backend/public/.htaccess` |
+| 404 po odświeżeniu na `/klienci` | `.htaccess` SPA nie dojechał albo wyłączony `mod_rewrite` |
+| Cennik pusty, reszta strony działa | `VITE_API_URL` wskazuje zły adres — zmiana wymaga **ponownego wdrożenia**, nie edycji na serwerze |
+| Migracja pada na `Unknown collation` | Migracja używa `utf8mb4_0900_ai_ci` (MySQL 8) na serwerze z MariaDB — popraw na `utf8mb4_unicode_ci` |
+| `php yii migrate:up` nic nie robi / błąd wersji | Użyj `php85 yii migrate:up`, nie `php yii migrate:up` — domyślne `php` na koncie to 8.2 |
+| Zmiany w kodzie nie widać | Cache opcode PHP — restart PHP z panelu Cyber-Folks |
 
 ### Czego wdrożenie celowo nie robi
 

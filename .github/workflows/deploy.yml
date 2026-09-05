@@ -1,9 +1,24 @@
 # Wdrozenie Solidusa na hosting Cyber-Folks przez SSH (rsync) po pushu na main.
 #
-# Solidus to DWIE aplikacje, wiec sa dwa cele wysylki:
-#  1. backend (Yii3)  -> katalog aplikacji poza web rootem; docroot subdomeny
-#     api.* wskazuje na jego podkatalog public/,
-#  2. frontend (SPA)  -> zbudowany `dist` laduje w public_html glownej domeny.
+# Solidus to DWIE aplikacje, ale na tym hostingu jeden wspolny adres:
+#  1. frontend (SPA)  -> zbudowany `dist` laduje w katalogu domeny (REMOTE_WEB_DIR),
+#  2. backend (Yii3)  -> laduje w PODKATALOGU tego samego katalogu domeny
+#     (REMOTE_APP_DIR = REMOTE_WEB_DIR/<nazwa>), a `.htaccess` SPA przepisuje
+#     `/api/*` na jego `public/index.php`.
+#
+# DLACZEGO BACKEND JEST W SRODKU KATALOGU SPA, A NIE OBOK NIEGO ANI NA OSOBNEJ
+# SUBDOMENIE: to jedyny uklad, ktory na tym hostingu dziala. Sprawdzone
+# bezposrednio: (a) PHP w katalogu POZA web rootem domeny zwraca 500 z pusta
+# trescia, takze przez dowiazanie symboliczne - hosting wykonuje PHP wylacznie
+# dla plikow fizycznie lezacych w drzewie danej domeny; (b) osobna subdomena
+# `api.*` z panelu w ogole nie wykonuje PHP, niezaleznie od ustawionej wersji
+# i wskazanego katalogu - przyczyna nieznana, po stronie hostingu, nie kodu.
+# Bezpieczenstwo katalogu backendu (mimo ze lezy "w srodku") pilnuje wylacznie
+# `backend/.htaccess` (`Deny from all`) - patrz ten plik po szczegoly.
+#
+# Efekt uboczny tego ukladu jest pozytywny: SPA i API maja to samo pochodzenie,
+# wiec CORS przestaje byc potrzebny (CorsMiddleware zostaje w kodzie - dziala
+# nieszkodliwie, przyda sie np. klientowi mobilnemu z innego originu).
 #
 # Dlaczego budujemy TUTAJ, a nie na serwerze: ani `vendor/`, ani `dist/` nie sa
 # w repozytorium (patrz .gitignore). Hosting wspoldzielony nie ma Node.js, a
@@ -110,9 +125,10 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          # Katalog aplikacji POZA public_html. Docroot subdomeny api.* wskazuje
-          # na jego podkatalog public/, wiec src/, config/ i vendor/ nie sa
-          # dostepne z przegladarki nawet przy zle skonfigurowanym .htaccess.
+          # Podkatalog wewnatrz katalogu domeny SPA (patrz uwaga na gorze pliku),
+          # np. /home/UZYTKOWNIK/domains/DOMENA/public_html/SPA/api-app.
+          # src/, config/, vendor/ i .env sa mimo to poza zasiegiem przegladarki -
+          # pilnuje tego backend/.htaccess (`Deny from all`), a nie polozenie.
           REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
         run: |
           rsync -rlzv --checksum \
@@ -140,10 +156,14 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          # public_html glownej domeny - tu laduje zawartosc frontend/dist.
+          # Katalog domeny SPA - tu laduje zawartosc frontend/dist. REMOTE_APP_DIR
+          # (backend) jest jego podkatalogiem, ale ten krok go nie rusza: brak
+          # --delete oznacza, ze rsync dotyka wylacznie plikow z `dist/`,
+          # podkatalog backendu zostaje nietkniety niezaleznie od kolejnosci
+          # tych dwoch kroków wysylki.
           REMOTE_WEB_DIR: ${{ secrets.REMOTE_WEB_DIR }}
         # Ukosnik na koncu `dist/` jest znaczacy: wysyla ZAWARTOSC katalogu,
-        # a nie sam katalog. Bez niego powstaloby public_html/dist/.
+        # a nie sam katalog. Bez niego powstaloby REMOTE_WEB_DIR/dist/.
         run: |
           rsync -rlzv --checksum \
             -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT -o StrictHostKeyChecking=yes" \

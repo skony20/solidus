@@ -1,13 +1,28 @@
 # Katalog glowny domeny (SPA). Vite kopiuje zawartosc public/ do dist/ bez
 # zmian, wiec ten plik jedzie na serwer razem z aplikacja.
 #
-# PROBLEM, KTORY ROZWIAZUJE: SPA ma jeden plik index.html i sama obsluguje
-# adresy (/klienci, /admin/cennik). Serwer o tym nie wie - przy odswiezeniu
-# strony na /klienci szuka takiego katalogu i zwraca 404. Regula ponizej
-# oddaje index.html dla kazdego adresu, ktory nie jest istniejacym plikiem.
-
+# PROBLEM, KTORY ROZWIAZUJE PIERWSZA REGULA: SPA ma jeden plik index.html
+# i sama obsluguje adresy (/klienci, /admin/cennik). Serwer o tym nie wie -
+# przy odswiezeniu strony na /klienci szuka takiego katalogu i zwraca 404.
+# Regula fallbacku oddaje index.html dla kazdego adresu, ktory nie jest
+# istniejacym plikiem.
+#
+# REGULA WYZEJ (/api/) MUSI BYC PIERWSZA - w przeciwnym razie fallback
+# przechwycilby zadania do API, zanim dojda do backendu, i zwracalby im
+# index.html zamiast JSON-a.
+#
+# DLACZEGO BACKEND W OGOLE TU JEST: hosting (Cyber-Folks) uruchamia PHP
+# WYLACZNIE dla plikow lezacych fizycznie w katalogu tej domeny - sprawdzone
+# bezposrednio, takze przez dowiazanie symboliczne do pliku POZA nim (nie
+# pomaga - liczy sie fizyczna sciezka). Osobna subdomena `api.*` z panelu
+# tez nie dziala (PHP nie wykonuje sie na niej wcale, niezaleznie od
+# ustawien) - jeden adres dla SPA i API jest wiec jedynym dzialajacym
+# ukladem na tym hostingu, nie wyborem estetycznym. Katalog backendu
+# (`api-app/`) jest mimo to zablokowany w calosci - patrz backend/.htaccess.
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    RewriteRule ^api/ api-app/public/index.php [L]
 
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
