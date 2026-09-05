@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Module\Client\Service;
 
 use App\Module\Client\Dto\ClientInput;
-use App\Module\Client\Dto\ValidationException;
 use App\Module\Client\Entity\Client;
 use App\Module\Client\Repository\ClientRepository;
 use App\Shared\Audit\AuditLogger;
 use App\Shared\Tenant\TenantContext;
+use App\Shared\Validation\ValidationException;
 use DateTimeImmutable;
 
 /**

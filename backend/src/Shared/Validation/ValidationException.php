@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Client\Dto;
+namespace App\Shared\Validation;
 
 use RuntimeException;
 

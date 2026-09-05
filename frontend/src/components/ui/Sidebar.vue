@@ -14,7 +14,7 @@ defineProps<{ open: boolean }>()
 defineEmits<{ close: [] }>()
 
 const auth = useAuthStore()
-const { user, tenant } = storeToRefs(auth)
+const { user, tenant, isPlatformAdmin } = storeToRefs(auth)
 
 // Inicjaly do awatara, np. "Anna Kowalska" -> "AK".
 const initials = computed(() =>
@@ -54,6 +54,16 @@ const initials = computed(() =>
     </nav>
 
     <div class="border-t border-white/[0.07] pt-3.5">
+      <!--
+        Widoczne tylko dla administratora calego systemu. To wygoda, nie
+        ochrona - dostepu pilnuje API i straznik tras.
+      -->
+      <NavItem
+        v-if="isPlatformAdmin"
+        to="/admin/cennik"
+        icon="sell"
+        label="Cennik (system)"
+      />
       <NavItem to="/ustawienia" icon="settings" label="Ustawienia" />
       <div class="mt-2.5 flex items-center gap-2.5 px-1.5 py-2">
         <div

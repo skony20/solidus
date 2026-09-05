@@ -45,6 +45,7 @@ return [
             'App\Shared\Migration',
             'App\Module\Account\Migration',
             'App\Module\Client\Migration',
+            'App\Module\Pricing\Migration',
         ],
         'sourcePaths' => [],
     ],

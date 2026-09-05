@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Client\Dto;
 
 use App\Module\Client\Entity\ClientStatus;
+use App\Shared\Validation\ValidationException;
 
 /**
  * Dane klienta przyslane przez SPA, juz oczyszczone i sprawdzone.

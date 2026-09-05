@@ -17,7 +17,18 @@ const router = createRouter({
       component: () => import('../modules/auth/LoginView.vue'),
       meta: { public: true },
     },
-    { path: '/', redirect: '/mission-control' },
+    {
+      /*
+       * Strona informacyjna. Publiczna i pod glownym adresem - to ona jest
+       * pierwszym kontaktem z Solidusem dla kogos, kto jeszcze nie ma konta.
+       * Zalogowany uzytkownik trafia do aplikacji z menu, nie przez przekierowanie:
+       * cennik i tresc marketingowa maja byc dostepne takze dla klienta.
+       */
+      path: '/',
+      name: 'landing',
+      component: () => import('../modules/landing/LandingView.vue'),
+      meta: { public: true },
+    },
     {
       path: '/mission-control',
       name: 'mission-control',
@@ -65,6 +76,16 @@ const router = createRouter({
       name: 'settings',
       component: () => import('../modules/settings/SettingsView.vue'),
     },
+    {
+      /*
+       * Panel administratora CALEGO systemu, nie pojedynczego biura.
+       * `platformAdmin` w meta wlacza dodatkowy warunek w strazniku ponizej.
+       */
+      path: '/admin/cennik',
+      name: 'admin-pricing',
+      component: () => import('../modules/admin/PricingAdminView.vue'),
+      meta: { platformAdmin: true },
+    },
   ],
 })
 
@@ -85,6 +106,15 @@ router.beforeEach(async (to) => {
     if (!restored) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
+  }
+
+  /*
+   * Ukrycie trasy przed nie-administratorem jest wygoda, nie zabezpieczeniem -
+   * prawdziwa granica stoi w API (PlatformAdminMiddleware). Ktos, kto wpisze
+   * adres recznie, zobaczylby tu tylko puste bledy 403.
+   */
+  if (to.meta.platformAdmin === true && !auth.isPlatformAdmin) {
+    return { name: 'mission-control' }
   }
 
   return true

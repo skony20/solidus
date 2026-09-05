@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Module\Client\Controller;
 
 use App\Module\Client\Dto\ClientInput;
-use App\Module\Client\Dto\ValidationException;
 use App\Module\Client\Repository\ClientRepository;
 use App\Module\Client\Service\ClientNotFoundException;
 use App\Module\Client\Service\ClientService;
 use App\Shared\Http\ApiController;
 use App\Shared\Http\JsonResponse;
+use App\Shared\Validation\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Yiisoft\Router\CurrentRoute;

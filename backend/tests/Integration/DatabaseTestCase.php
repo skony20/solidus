@@ -132,11 +132,50 @@ abstract class DatabaseTestCase extends TestCase
             'ip' => 'VARCHAR(45) NULL',
             'created_at' => 'DATETIME(6) NOT NULL',
         ], $options)->execute();
+
+        // Cennik. Bez kolumny tenant_id - i to jest wlasnie rzecz, ktora
+        // sprawdza PricingPlanRepositoryTest.
+        $this->db->createCommand()->createTable('pricing_plans', [
+            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
+            'code' => 'VARCHAR(40) NOT NULL',
+            'name' => 'VARCHAR(80) NOT NULL',
+            'tagline' => 'VARCHAR(160) NULL',
+            'price_monthly' => 'BIGINT NULL',
+            'price_yearly' => 'BIGINT NULL',
+            'currency' => "CHAR(3) NOT NULL DEFAULT 'PLN'",
+            'cta_label' => 'VARCHAR(60) NULL',
+            'is_featured' => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'is_active' => 'TINYINT(1) NOT NULL DEFAULT 1',
+            'position' => 'INT NOT NULL DEFAULT 0',
+            'created_at' => 'DATETIME(6) NOT NULL',
+            'updated_at' => 'DATETIME(6) NOT NULL',
+        ], $options)->execute();
+
+        $this->db->createCommand()
+            ->createIndex('pricing_plans', 'ux_pricing_plans_code', ['code'], 'UNIQUE')
+            ->execute();
+
+        $this->db->createCommand()->createTable('pricing_plan_features', [
+            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
+            'plan_id' => 'BIGINT NOT NULL',
+            'text' => 'VARCHAR(200) NOT NULL',
+            'position' => 'INT NOT NULL DEFAULT 0',
+        ], $options)->execute();
+
+        $this->db->createCommand()->addForeignKey(
+            'pricing_plan_features',
+            'fk_pricing_features_plan',
+            'plan_id',
+            'pricing_plans',
+            'id',
+            'CASCADE',
+            'CASCADE',
+        )->execute();
     }
 
     private function dropSchema(): void
     {
-        foreach (['audit_log', 'clients', 'tenants'] as $table) {
+        foreach (['pricing_plan_features', 'pricing_plans', 'audit_log', 'clients', 'tenants'] as $table) {
             $this->db->createCommand('DROP TABLE IF EXISTS ' . $this->db->getQuoter()->quoteTableName($table))->execute();
         }
     }

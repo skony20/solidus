@@ -31,6 +31,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => user.value !== null)
 
+  /**
+   * Administrator calego systemu (nie wlasciciel biura) - jedyna rola, ktora
+   * siega poza wlasnego tenanta. Dzis odblokowuje zarzadzanie cennikiem strony
+   * informacyjnej. Nazwa roli musi zgadzac sie ze stala Role::PLATFORM_ADMIN
+   * po stronie backendu.
+   */
+  const isPlatformAdmin = computed(() => user.value?.roles.includes('platform_admin') === true)
+
   async function login(tenantSlug: string, email: string, password: string): Promise<boolean> {
     isLoading.value = true
     error.value = null
@@ -99,5 +107,16 @@ export const useAuthStore = defineStore('auth', () => {
     tenant.value = null
   }
 
-  return { user, tenant, isLoading, error, isAuthenticated, login, logout, restoreSession, clear }
+  return {
+    user,
+    tenant,
+    isLoading,
+    error,
+    isAuthenticated,
+    isPlatformAdmin,
+    login,
+    logout,
+    restoreSession,
+    clear,
+  }
 })

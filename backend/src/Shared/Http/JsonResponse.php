@@ -59,6 +59,16 @@ final readonly class JsonResponse
         return $this->error(Status::UNAUTHORIZED, $message);
     }
 
+    /**
+     * Uwierzytelnienie sie powiodlo, ale uprawnienia nie wystarczaja.
+     * Swiadomie 403, a nie 404 - te endpointy sa jawna czescia API, wiec
+     * ukrywanie ich istnienia nic by nie dalo poza mylacym komunikatem.
+     */
+    public function forbidden(string $message = 'Brak uprawnien do tej operacji.'): ResponseInterface
+    {
+        return $this->error(Status::FORBIDDEN, $message);
+    }
+
     public function unprocessable(string $message, array $details = []): ResponseInterface
     {
         return $this->error(Status::UNPROCESSABLE_ENTITY, $message, $details);

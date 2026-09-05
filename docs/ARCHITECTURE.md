@@ -224,6 +224,22 @@ composer require "yiisoft/queue:^3.0@dev" "yiisoft/queue-redis:@dev" --ignore-pl
 
 Historia Git zawiera działającą wersję tej konfiguracji (commit `dff781c` i wcześniejsze) — najszybciej przywrócić ją stamtąd.
 
+### 2.10 Cennik i rola ponad biurami
+
+Strona informacyjna (`/`, publiczna trasa SPA) zawiera sekcję cennika, której treść pochodzi z bazy — w kodzie frontendu nie ma ani jednej kwoty. Wymusiło to dwa wyjątki od reguł opisanych wyżej.
+
+**Wyjątek pierwszy: tabele bez `tenant_id`.** `pricing_plans` i `pricing_plan_features` są własnością operatora Solidusa, nie biura rachunkowego. Ta sama lista planów jest pokazywana wszystkim odwiedzającym, także niezalogowanym — dopisanie `tenant_id` wymagałoby odpowiedzi na pytanie „czyj cennik pokazać anonimowemu gościowi", które sensownej odpowiedzi nie ma. `PricingPlanRepository` świadomie nie używa traitu `TenantScoped`; `PricingPlanRepositoryTest` sprawdza, że cennik jest ten sam z każdego kontekstu, więc dodanie do niego filtrowania po tenancie zepsuje test.
+
+**Wyjątek drugi: rola `platform_admin`.** Jedyna rola sięgająca poza własnego tenanta. Nie daje dostępu do danych innych biur — izolacja zostaje nienaruszona, bo repozytoria domenowe dalej filtrują po `tenant_id` z tokenu — a wyłącznie do zapisu cennika. Zapis chroni `PlatformAdminMiddleware`, wpięte **za** `TenantMiddleware` (czyta tożsamość, którą tamto wstawiło do atrybutu żądania).
+
+**Roli nie da się nadać przez API.** Jedyna droga to konsola: `php yii admin:grant <slug-biura> <e-mail>` (`--revoke` odbiera). Gdyby nadawało ją żądanie HTTP, jeden błąd w warunku uprawnień w dowolnym kontrolerze wystarczyłby, żeby klient przyznał ją sobie sam. Zmiana działa najpóźniej po 15 minutach — tyle żyje access token, a przy odświeżaniu role są czytane z bazy na nowo.
+
+**Ceny są przechowywane w groszach** (`BIGINT`), nie w `DECIMAL` i nie w liczbach zmiennoprzecinkowych. API też oddaje grosze; formatowanie kwoty należy do interfejsu, bo backend zwracający `"149,00 zł"` zamyka drogę do innej waluty i innego języka. `NULL` w cenie znaczy „wycena indywidualna" i jest czymś innym niż `0`.
+
+**Zmiany cennika trafiają do audit logu** (`entity_type = pricing_plan`). Wpis dostaje `tenant_id` administratora, który dokonał zmiany — niedoskonałe, bo cennik nie należy do żadnego biura, ale `audit_log.tenant_id` jest `NOT NULL` z kluczem obcym, a osobny dziennik „systemowy" dla jednej tabeli kosztowałby więcej, niż daje.
+
+**Quiz „Audyt Gotowości AML" liczy się w przeglądarce** i nigdzie nie jest wysyłany; podany e-mail również nie — wysyłka należy do modułu Komunikacja, który czeka na decyzję z sekcji 2.9. Formularz mówi więc, że zapisuje zgłoszenie, a nie że wysyła raport.
+
 ---
 
 ## 3. Struktura bazy
@@ -232,6 +248,8 @@ Historia Git zawiera działającą wersję tej konfiguracji (commit `dff781c` i 
 tenants ──┬─< users ──< refresh_tokens
           ├─< clients
           └─< audit_log
+
+pricing_plans ──< pricing_plan_features     (poza drzewem tenantów — patrz 2.10)
 ```
 
 | Tabela | Klucze i indeksy | Uwagi |
@@ -241,6 +259,8 @@ tenants ──┬─< users ──< refresh_tokens
 | `refresh_tokens` | PK `jti`, INDEX `(user_id, revoked_at)`, FK → `users`, `tenants` | Wyłącznie identyfikatory, nigdy token |
 | `clients` | INDEX `(tenant_id, id)`, UNIQUE `(tenant_id, nip)`, INDEX `(tenant_id, status)`, FK → `tenants` | NIP unikalny per biuro — dwa biura mogą obsługiwać tę samą firmę |
 | `audit_log` | INDEX `(tenant_id, entity_type, entity_id)`, INDEX `(tenant_id, created_at)`, FK tylko → `tenants` | Brak FK do encji jest celowy |
+| `pricing_plans` | UNIQUE `code`, INDEX `(is_active, position)` | **Bez `tenant_id`** — cennik jest wspólny dla systemu (2.10). Ceny w groszach |
+| `pricing_plan_features` | INDEX `(plan_id, position)`, FK → `pricing_plans` (CASCADE) | Punkty listy; edytowane jako całość |
 
 Migracje leżą przy modułach, których dotyczą (`Module/*/Migration/`), wspólne w `Shared/Migration/`. Rejestracja przez `sourceNamespaces` w `config/common/params.php`.
 
@@ -251,6 +271,7 @@ Migracje leżą przy modułach, których dotyczą (`Module/*/Migration/`), wspó
 | Zakres | Narzędzie | Co sprawdza |
 |---|---|---|
 | `ClientRepositoryTest` | PHPUnit + prawdziwy MySQL | Izolacja tenantów na liście, odczycie, edycji i usunięciu; unikalność NIP per biuro; zapis do audit logu |
+| `PricingPlanRepositoryTest` | PHPUnit + prawdziwy MySQL | Lustrzane odbicie testu wyżej: cennik jest **ten sam** z każdego biura; ukryte plany poza wejściem publicznym; kolejność planów i punktów; unikalność kodu; wpis do audit logu |
 | `ClientList.spec.ts` | Vitest + Vue Test Utils | Stany listy (ładowanie, pusta, z danymi), formatowanie NIP, emitowane zdarzenia |
 
 **Testy izolacji celowo używają prawdziwej bazy.** Izolacja tenantów jest egzekwowana przez warunki SQL, klucze obce i indeksy. Test na atrapie repozytorium sprawdzałby wyłącznie własną atrapę i przechodziłby także wtedy, gdyby produkcyjne zapytanie gubiło `WHERE tenant_id`. Testy pomijają się z czytelnym komunikatem, gdy MySQL jest niedostępny.
@@ -266,7 +287,7 @@ Rzeczy świadomie odłożone — do rozstrzygnięcia przed produkcją:
 1. **Brak kolejki zadań** (sekcja 2.9). Środowisko nie ma Redisa. Dopóki nie ma modułu Komunikacja, nic to nie blokuje — ale **decyzja o wariancie kolejki musi zapaść przed rozpoczęciem prac nad masowymi wysyłkami**, nie po nich. Rekomendacja przy braku Redisa: `yiisoft/queue-db`.
 2. **Lokalny PHP nie wystarcza do pracy poza Dockerem.** Projekt celuje w PHP 8.5 (`"php": "~8.5.0"`), a maszyna deweloperska ma 8.2 — `composer install` uruchomiony bezpośrednio na hoście odmówi. To nie jest usterka, tylko konsekwencja przypięcia do wersji produkcyjnej: cała praca z backendem idzie przez kontener (`docker compose … exec php …`). Alternatywą jest doinstalowanie PHP 8.5 na hoście.
 3. **Brak ekranu rejestracji.** Endpoint `POST /api/auth/register` działa, interfejsu do niego nie ma. Pierwsze biuro zakłada się poleceniem `curl`.
-4. **Brak autoryzacji ról.** Role są w tokenie (`roles`) i w bazie, ale żaden endpoint ich nie sprawdza — każdy zalogowany użytkownik biura może wszystko. `yiisoft/access` jest zainstalowany, kontrola nie jest podpięta.
+4. **Brak autoryzacji ról wewnątrz biura.** Sprawdzana jest dziś **jedna** rola: `platform_admin`, przez `PlatformAdminMiddleware` na trasach cennika (sekcja 2.10). Role tenantowe (`owner`, `member`) są w tokenie i w bazie, ale żaden endpoint domenowy ich nie sprawdza — każdy zalogowany pracownik biura może wszystko w obrębie swojego biura. `yiisoft/access` jest zainstalowany, kontrola nie jest podpięta.
 5. **Usuwanie klienta jest trwałe.** Docelowo powinno być archiwizacją (`status = archived`); dziś wiersz znika, a ślad zostaje wyłącznie w audit logu.
 6. **Brak paginacji w interfejsie.** API przyjmuje `limit`/`offset`, front pobiera pierwsze 50 rekordów i nie pokazuje nawigacji po stronach.
 7. **Historia zmian nie jest wystawiona w UI.** `AuditLogger::historyFor()` istnieje, ekranu nie ma.

@@ -11,9 +11,11 @@ use App\Module\Communication\Controller\CommunicationController;
 use App\Module\Delegation\Controller\DelegationController;
 use App\Module\Finance\Controller\FinanceController;
 use App\Module\MissionControl\Controller\MissionControlController;
+use App\Module\Pricing\Controller\PricingController;
 use App\Module\Settings\Controller\SettingsController;
 use App\Module\Team\Controller\TeamController;
 use App\Module\Whistleblower\Controller\WhistleblowerController;
+use App\Shared\Auth\PlatformAdminMiddleware;
 use App\Shared\Tenant\TenantMiddleware;
 use App\Web;
 use Yiisoft\Router\Group;
@@ -39,6 +41,25 @@ return [
             Route::post('/login')->action([AuthController::class, 'login'])->name('auth/login'),
             Route::post('/refresh')->action([AuthController::class, 'refresh'])->name('auth/refresh'),
             Route::post('/logout')->action([AuthController::class, 'logout'])->name('auth/logout'),
+        ),
+
+    // --- Publiczne: cennik strony informacyjnej --------------------------
+    // Strona sprzedazowa jest widoczna dla niezalogowanych, wiec i cennik musi
+    // byc. Zwracane sa wylacznie plany aktywne (patrz PricingController::index).
+    Route::get('/api/pricing')->action([PricingController::class, 'index'])->name('pricing/index'),
+
+    // --- Zarzadzanie cennikiem: wylacznie administrator calego systemu ---
+    // Dwa middleware po kolei: TenantMiddleware ustala tozsamosc z tokenu,
+    // PlatformAdminMiddleware sprawdza role. Kolejnosc jest istotna - drugie
+    // czyta to, co wstawilo pierwsze.
+    Group::create('/api/admin/pricing')
+        ->middleware(TenantMiddleware::class)
+        ->middleware(PlatformAdminMiddleware::class)
+        ->routes(
+            Route::get('')->action([PricingController::class, 'adminIndex'])->name('admin/pricing/index'),
+            Route::post('')->action([PricingController::class, 'create'])->name('admin/pricing/create'),
+            Route::put('/{id:\d+}')->action([PricingController::class, 'update'])->name('admin/pricing/update'),
+            Route::delete('/{id:\d+}')->action([PricingController::class, 'delete'])->name('admin/pricing/delete'),
         ),
 
     // --- Chronione: wymagaja waznego access tokenu ----------------------

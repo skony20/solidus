@@ -42,6 +42,43 @@ final readonly class UserRepository
         return $row === null ? null : User::fromRow($row);
     }
 
+    /**
+     * Wyszukanie po slugu biura zamiast po tenant_id - na potrzeby konsoli,
+     * gdzie czlowiek zna nazwe biura, a nie jego identyfikator liczbowy.
+     */
+    public function findByEmailAndTenantSlug(string $tenantSlug, string $email): ?User
+    {
+        $row = (new Query($this->db))
+            ->select('u.*')
+            ->from(['u' => self::TABLE])
+            ->innerJoin(['t' => 'tenants'], 'u.tenant_id = t.id')
+            ->where(['t.slug' => $tenantSlug, 'u.email' => mb_strtolower($email)])
+            ->one();
+
+        return $row === null ? null : User::fromRow($row);
+    }
+
+    /**
+     * Podmienia caly zestaw rol uzytkownika.
+     *
+     * Wolane wylacznie z konsoli (patrz {@see \App\Console\GrantPlatformAdminCommand}).
+     * Celowo nie ma tu metody "dodaj role" przyjmujacej pojedyncza role -
+     * takie API kusi, zeby wywolac je z kontrolera.
+     *
+     * @param string[] $roles
+     */
+    public function replaceRoles(int $userId, array $roles): void
+    {
+        $this->db->createCommand()->update(
+            self::TABLE,
+            [
+                'roles' => json_encode(array_values(array_unique($roles)), JSON_THROW_ON_ERROR),
+                'updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s.u'),
+            ],
+            ['id' => $userId],
+        )->execute();
+    }
+
     public function emailExists(int $tenantId, string $email): bool
     {
         return (new Query($this->db))
