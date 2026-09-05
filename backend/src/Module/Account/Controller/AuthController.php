@@ -69,6 +69,16 @@ final readonly class AuthController extends ApiController
             return $this->json->unauthorized('Nieprawidlowe dane logowania.');
         }
 
+        // Stan biura sprawdzamy DOPIERO PO poprawnej weryfikacji hasla, nie
+        // wczesniej. Gdyby ten warunek stal przed sprawdzeniem hasla, odpowiedz
+        // "biuro zawieszone" stalaby sie wyciekiem informacji - kazdy, kto zna
+        // sam slug (publiczny, trafia do adresu logowania), moglby ustalic
+        // stan cudzego konta bez znajomosci hasla. Po weryfikacji hasla ten,
+        // kto pyta, juz udowodnil, ze ma do tego konta prawo.
+        if (!$tenant->status->allowsLogin()) {
+            return $this->json->forbidden('To biuro nie ma obecnie dostepu do systemu. Skontaktuj sie z operatorem.');
+        }
+
         $tokens = $this->jwtService->issue(
             userId: (int) $user->id,
             tenantId: $tenant->id,
@@ -111,6 +121,15 @@ final readonly class AuthController extends ApiController
 
             if ($user === null || !$user->isActive) {
                 return $this->json->unauthorized('Konto jest nieaktywne.');
+            }
+
+            // Zawieszenie biura dziala z tym samym opoznieniem co odebranie
+            // roli: token dostepowy wydany wczesniej zyje maksymalnie 15 minut
+            // (JwtService::accessTtl), a odswiezenie sesji jest miejscem,
+            // w ktorym stan biura jest sprawdzany na nowo.
+            $tenant = $this->tenants->findById($user->tenantId());
+            if ($tenant === null || !$tenant->status->allowsLogin()) {
+                return $this->json->unauthorized('Konto biura jest zawieszone lub nie istnieje.');
             }
 
             // Role czytamy z bazy, nie z tokenu - odebranie uprawnien ma

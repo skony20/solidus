@@ -56,14 +56,15 @@ const initials = computed(() =>
     <div class="border-t border-white/[0.07] pt-3.5">
       <!--
         Widoczne tylko dla administratora calego systemu. To wygoda, nie
-        ochrona - dostepu pilnuje API i straznik tras.
+        ochrona - dostepu pilnuje API i straznik tras (meta: platformAdmin).
       -->
-      <NavItem
-        v-if="isPlatformAdmin"
-        to="/admin/cennik"
-        icon="sell"
-        label="Cennik (system)"
-      />
+      <template v-if="isPlatformAdmin">
+        <div class="mb-1.5 mt-1 px-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-content-variant">
+          Panel operatora
+        </div>
+        <NavItem to="/admin/biura" icon="domain" label="Biura" />
+        <NavItem to="/admin/cennik" icon="sell" label="Cennik" />
+      </template>
       <NavItem to="/ustawienia" icon="settings" label="Ustawienia" />
       <div class="mt-2.5 flex items-center gap-2.5 px-1.5 py-2">
         <div

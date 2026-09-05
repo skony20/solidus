@@ -11,6 +11,7 @@ use App\Module\Communication\Controller\CommunicationController;
 use App\Module\Delegation\Controller\DelegationController;
 use App\Module\Finance\Controller\FinanceController;
 use App\Module\MissionControl\Controller\MissionControlController;
+use App\Module\Platform\Controller\TenantAdminController;
 use App\Module\Pricing\Controller\PricingController;
 use App\Module\Settings\Controller\SettingsController;
 use App\Module\Team\Controller\TeamController;
@@ -60,6 +61,28 @@ return [
             Route::post('')->action([PricingController::class, 'create'])->name('admin/pricing/create'),
             Route::put('/{id:\d+}')->action([PricingController::class, 'update'])->name('admin/pricing/update'),
             Route::delete('/{id:\d+}')->action([PricingController::class, 'delete'])->name('admin/pricing/delete'),
+        ),
+
+    // --- Panel operatora: przeglad biur, stan, plan, platnosci -----------
+    // Tak samo chronione jak cennik - TenantMiddleware + PlatformAdminMiddleware.
+    // Kontrolery i repozytoria tej grupy CELOWO nie filtruja po tenant_id -
+    // to jedyne miejsce w systemie, ktore ma prawo widziec wszystkie biura
+    // naraz. Patrz Module\Platform\Repository\TenantAdminRepository.
+    Group::create('/api/admin/tenants')
+        ->middleware(TenantMiddleware::class)
+        ->middleware(PlatformAdminMiddleware::class)
+        ->routes(
+            Route::get('')->action([TenantAdminController::class, 'index'])->name('admin/tenants/index'),
+            Route::get('/{id:\d+}')->action([TenantAdminController::class, 'view'])->name('admin/tenants/view'),
+            Route::put('/{id:\d+}/status')
+                ->action([TenantAdminController::class, 'updateStatus'])
+                ->name('admin/tenants/update-status'),
+            Route::put('/{id:\d+}/plan')
+                ->action([TenantAdminController::class, 'updatePlan'])
+                ->name('admin/tenants/update-plan'),
+            Route::post('/{id:\d+}/payments')
+                ->action([TenantAdminController::class, 'recordPayment'])
+                ->name('admin/tenants/record-payment'),
         ),
 
     // --- Chronione: wymagaja waznego access tokenu ----------------------

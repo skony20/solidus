@@ -86,6 +86,18 @@ const router = createRouter({
       component: () => import('../modules/admin/PricingAdminView.vue'),
       meta: { platformAdmin: true },
     },
+    {
+      path: '/admin/biura',
+      name: 'admin-tenants',
+      component: () => import('../modules/admin/TenantsListView.vue'),
+      meta: { platformAdmin: true },
+    },
+    {
+      path: '/admin/biura/:id(\\d+)',
+      name: 'admin-tenant-detail',
+      component: () => import('../modules/admin/TenantDetailView.vue'),
+      meta: { platformAdmin: true },
+    },
   ],
 })
 

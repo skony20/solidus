@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Module\Account\Repository;
 
 use App\Module\Account\Entity\Tenant;
+use App\Module\Account\Entity\TenantStatus;
 use DateTimeImmutable;
 use Yiisoft\Db\Connection\ConnectionInterface;
 use Yiisoft\Db\Query\Query;
@@ -51,6 +52,9 @@ final readonly class TenantRepository
             'name' => $name,
             'slug' => $slug,
             'plan' => $plan,
+            // Nowe biuro zaczyna jako 'trial' - dopoki operator recznie nie
+            // potwierdzi platnosci (patrz Module\Platform), nie jest 'active'.
+            'status' => TenantStatus::Trial->value,
             'created_at' => $createdAt->format('Y-m-d H:i:s.u'),
         ])->execute();
 
@@ -59,7 +63,36 @@ final readonly class TenantRepository
             name: $name,
             slug: $slug,
             plan: $plan,
+            status: TenantStatus::Trial,
+            pricingPlanId: null,
             createdAt: $createdAt,
         );
+    }
+
+    /**
+     * Zmiana stanu biura (aktywne/zawieszone/...) - wylacznie z panelu
+     * operatora, patrz Module\Platform\Service\TenantAdminService.
+     */
+    public function updateStatus(int $id, TenantStatus $status): void
+    {
+        $this->db->createCommand()->update(
+            self::TABLE,
+            ['status' => $status->value],
+            ['id' => $id],
+        )->execute();
+    }
+
+    /**
+     * Powiazanie z planem z katalogu cennika. `$displayPlan` to tekstowa
+     * nazwa/kod wyswietlana w /auth/me - trzymana osobno od poczatku istnienia
+     * tabeli, wiec aktualizujemy obie kolumny naraz, zeby sie nie rozjechaly.
+     */
+    public function updatePlan(int $id, ?int $pricingPlanId, string $displayPlan): void
+    {
+        $this->db->createCommand()->update(
+            self::TABLE,
+            ['pricing_plan_id' => $pricingPlanId, 'plan' => $displayPlan],
+            ['id' => $id],
+        )->execute();
     }
 }

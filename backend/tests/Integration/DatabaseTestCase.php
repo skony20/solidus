@@ -99,42 +99,7 @@ abstract class DatabaseTestCase extends TestCase
 
         $options = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
 
-        $this->db->createCommand()->createTable('tenants', [
-            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
-            'name' => 'VARCHAR(255) NOT NULL',
-            'slug' => 'VARCHAR(100) NOT NULL',
-            'plan' => "VARCHAR(50) NOT NULL DEFAULT 'starter'",
-            'created_at' => 'DATETIME(6) NOT NULL',
-        ], $options)->execute();
-
-        $this->db->createCommand()->createTable('clients', [
-            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
-            'tenant_id' => 'BIGINT NOT NULL',
-            'name' => 'VARCHAR(255) NOT NULL',
-            'nip' => 'VARCHAR(10) NULL',
-            'email' => 'VARCHAR(255) NULL',
-            'phone' => 'VARCHAR(30) NULL',
-            'address' => 'VARCHAR(255) NULL',
-            'status' => "VARCHAR(30) NOT NULL DEFAULT 'lead'",
-            'notes' => 'TEXT NULL',
-            'created_at' => 'DATETIME(6) NOT NULL',
-            'updated_at' => 'DATETIME(6) NOT NULL',
-        ], $options)->execute();
-
-        $this->db->createCommand()->createTable('audit_log', [
-            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
-            'tenant_id' => 'BIGINT NOT NULL',
-            'user_id' => 'BIGINT NULL',
-            'entity_type' => 'VARCHAR(100) NOT NULL',
-            'entity_id' => 'BIGINT NOT NULL',
-            'action' => "ENUM('create','update','delete') NOT NULL",
-            'changes' => 'JSON NOT NULL',
-            'ip' => 'VARCHAR(45) NULL',
-            'created_at' => 'DATETIME(6) NOT NULL',
-        ], $options)->execute();
-
-        // Cennik. Bez kolumny tenant_id - i to jest wlasnie rzecz, ktora
-        // sprawdza PricingPlanRepositoryTest.
+        // Cennik NAJPIERW - `tenants.pricing_plan_id` ma do niego klucz obcy.
         $this->db->createCommand()->createTable('pricing_plans', [
             'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
             'code' => 'VARCHAR(40) NOT NULL',
@@ -171,11 +136,104 @@ abstract class DatabaseTestCase extends TestCase
             'CASCADE',
             'CASCADE',
         )->execute();
+
+        $this->db->createCommand()->createTable('tenants', [
+            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
+            'name' => 'VARCHAR(255) NOT NULL',
+            'slug' => 'VARCHAR(100) NOT NULL',
+            'plan' => "VARCHAR(50) NOT NULL DEFAULT 'starter'",
+            'status' => "VARCHAR(20) NOT NULL DEFAULT 'active'",
+            'pricing_plan_id' => 'BIGINT NULL',
+            'created_at' => 'DATETIME(6) NOT NULL',
+        ], $options)->execute();
+
+        $this->db->createCommand()
+            ->addForeignKey('tenants', 'fk_tenants_pricing_plan', 'pricing_plan_id', 'pricing_plans', 'id', 'SET NULL', 'CASCADE')
+            ->execute();
+
+        // Uzytkownicy - potrzebni PricingPlanRepositoryTest nie sa, ale
+        // TenantAdminServiceTest musi umiec zalozyc konto pracownika biura
+        // i platnosc z `recorded_by_user_id` wskazujacym na nie.
+        $this->db->createCommand()->createTable('users', [
+            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
+            'tenant_id' => 'BIGINT NOT NULL',
+            'email' => 'VARCHAR(255) NOT NULL',
+            'password_hash' => 'VARCHAR(255) NOT NULL',
+            'name' => 'VARCHAR(255) NOT NULL',
+            'roles' => 'JSON NOT NULL',
+            'is_active' => 'TINYINT(1) NOT NULL DEFAULT 1',
+            'created_at' => 'DATETIME(6) NOT NULL',
+            'updated_at' => 'DATETIME(6) NOT NULL',
+        ], $options)->execute();
+
+        $this->db->createCommand()
+            ->addForeignKey('users', 'fk_users_tenant', 'tenant_id', 'tenants', 'id', 'CASCADE', 'CASCADE')
+            ->execute();
+
+        $this->db->createCommand()->createTable('tenant_payments', [
+            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
+            'tenant_id' => 'BIGINT NOT NULL',
+            'amount' => 'BIGINT NOT NULL',
+            'currency' => "CHAR(3) NOT NULL DEFAULT 'PLN'",
+            'period_start' => 'DATE NOT NULL',
+            'period_end' => 'DATE NOT NULL',
+            'status' => "VARCHAR(20) NOT NULL DEFAULT 'paid'",
+            'provider' => "VARCHAR(30) NOT NULL DEFAULT 'manual'",
+            'provider_reference' => 'VARCHAR(120) NULL',
+            'note' => 'VARCHAR(255) NULL',
+            'recorded_by_user_id' => 'BIGINT NULL',
+            'created_at' => 'DATETIME(6) NOT NULL',
+        ], $options)->execute();
+
+        $this->db->createCommand()
+            ->addForeignKey('tenant_payments', 'fk_tenant_payments_tenant', 'tenant_id', 'tenants', 'id', 'CASCADE', 'CASCADE')
+            ->execute();
+        $this->db->createCommand()
+            ->addForeignKey('tenant_payments', 'fk_tenant_payments_recorded_by', 'recorded_by_user_id', 'users', 'id', 'SET NULL', 'CASCADE')
+            ->execute();
+
+        $this->db->createCommand()->createTable('clients', [
+            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
+            'tenant_id' => 'BIGINT NOT NULL',
+            'name' => 'VARCHAR(255) NOT NULL',
+            'nip' => 'VARCHAR(10) NULL',
+            'email' => 'VARCHAR(255) NULL',
+            'phone' => 'VARCHAR(30) NULL',
+            'address' => 'VARCHAR(255) NULL',
+            'status' => "VARCHAR(30) NOT NULL DEFAULT 'lead'",
+            'notes' => 'TEXT NULL',
+            'created_at' => 'DATETIME(6) NOT NULL',
+            'updated_at' => 'DATETIME(6) NOT NULL',
+        ], $options)->execute();
+
+        $this->db->createCommand()->createTable('audit_log', [
+            'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
+            'tenant_id' => 'BIGINT NOT NULL',
+            'user_id' => 'BIGINT NULL',
+            'entity_type' => 'VARCHAR(100) NOT NULL',
+            'entity_id' => 'BIGINT NOT NULL',
+            'action' => "ENUM('create','update','delete') NOT NULL",
+            'changes' => 'JSON NOT NULL',
+            'ip' => 'VARCHAR(45) NULL',
+            'created_at' => 'DATETIME(6) NOT NULL',
+        ], $options)->execute();
     }
 
     private function dropSchema(): void
     {
-        foreach (['pricing_plan_features', 'pricing_plans', 'audit_log', 'clients', 'tenants'] as $table) {
+        // Kolejnosc odwrotna do tworzenia - kazda tabela znika, zanim
+        // usuniemy ta, do ktorej ma klucz obcy.
+        $tables = [
+            'tenant_payments',
+            'audit_log',
+            'clients',
+            'users',
+            'tenants',
+            'pricing_plan_features',
+            'pricing_plans',
+        ];
+
+        foreach ($tables as $table) {
             $this->db->createCommand('DROP TABLE IF EXISTS ' . $this->db->getQuoter()->quoteTableName($table))->execute();
         }
     }

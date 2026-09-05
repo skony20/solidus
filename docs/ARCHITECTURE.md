@@ -240,6 +240,28 @@ Strona informacyjna (`/`, publiczna trasa SPA) zawiera sekcję cennika, której 
 
 **Quiz „Audyt Gotowości AML" liczy się w przeglądarce** i nigdzie nie jest wysyłany; podany e-mail również nie — wysyłka należy do modułu Komunikacja, który czeka na decyzję z sekcji 2.9. Formularz mówi więc, że zapisuje zgłoszenie, a nie że wysyła raport.
 
+### 2.11 Panel operatora: biura, stan konta, płatności
+
+Solidus ma trzy odrębne powierzchnie, jedną aplikacją: (1) strona informacyjna z rejestracją biur, (2) aplikacja dla zalogowanego biura — to, co opisują sekcje wyżej, i (3) panel operatora (`/admin/biura`) — wyłącznie dla roli `platform_admin`, do przeglądu WSZYSTKICH biur, zmiany ich stanu i ręcznego księgowania płatności. Jedna aplikacja, jeden system designu, jedno logowanie — granicą jest API i rola w tokenie, nie odrębny build.
+
+**Moduł `Platform` łamie zasadę „każde repozytorium filtruje po `tenant_id`" świadomie i w jednym miejscu.** `TenantAdminRepository` i `TenantPaymentRepository` nie używają `TenantScoped` — to jedyne repozytoria w systemie, które mają prawo zwrócić dane wszystkich biur naraz, bo dokładnie to jest ich zadaniem. Chroni je wyłącznie warstwa HTTP (`PlatformAdminMiddleware`), tak jak cennik. `TenantAdminServiceTest` sprawdza explicite, że lista widzi biura niezależnie od tego, na które aktualnie wskazuje `TenantContext`.
+
+**Odrębne od `TenantRepository`, celowo.** Tamto repozytorium obsługuje logowanie i rejestrację — ma zostać chude, żeby nikt nie dopisał do niego przez pomyłkę zapytania zwracającego dane cudzego biura. `Module\Platform` istnieje jako osobna, jawnie nazwana przestrzeń właśnie po to, żeby uprawnienie „widzę wszystkie biura" było widoczne w nazwie klasy, a nie ukryte w ogólnym repozytorium kont.
+
+**Panel operatora NIE POKAZUJE danych merytorycznych biur.** `TenantOverview` i lista pracowników (`usersFor()`) niosą wyłącznie metadane: nazwę, slug, stan, plan, liczbę kont, e-maile i role pracowników. Ani jednego klienta biura, oceny ryzyka AML czy zgłoszenia sygnalisty. To decyzja projektowa, nie ograniczenie techniczne — operator widzi, ŻE biuro istnieje i płaci, nie CO biuro robi. Przy rozmowie z klientem o RODO i tajemnicy zawodowej biura rachunkowego to argument, nie formalność.
+
+**Stan biura (`TenantStatus`): `trial` → `active` → `suspended`/`cancelled`.** Nowe biuro zaczyna jako `trial` (`TenantRepository::create()`) — dostęp działa, zanim ktokolwiek zapłacił. Zawieszenie blokuje logowanie i odświeżanie sesji (`AuthController::login/refresh`), ale nie unieważnia natychmiast aktywnego tokenu dostępowego — dokładnie ten sam wzorzec opóźnienia co przy odbieraniu ról (sekcja 2.4): maksymalnie 15 minut, tyle żyje access token.
+
+**Kolejność sprawdzeń przy logowaniu jest istotna.** Stan biura sprawdza się DOPIERO PO poprawnej weryfikacji hasła, nie przed nią. Gdyby było odwrotnie, komunikat „biuro zawieszone" byłby wyciekiem: sam slug biura jest publiczny (wpisywany na ekranie logowania), więc każdy mógłby ustalić stan cudzego konta bez znajomości hasła. Po poprawnym haśle ten, kto pyta, już udowodnił, że ma prawo do tej informacji.
+
+**Plan biura ma dwie kolumny, celowo utrzymywane razem.** `tenants.plan` (tekst, od początku istnienia tabeli) i `tenants.pricing_plan_id` (FK do `pricing_plans`, `ON DELETE SET NULL`). `TenantAdminService::assignPlan()` aktualizuje obie naraz. Usunięcie planu z cennika nie zabiera biuru dostępu — traci tylko powiązanie z katalogiem i wraca do stanu „wycena indywidualna" (`plan = 'custom'`).
+
+**Historia płatności jest osobną tabelą (`tenant_payments`), nie polem na `tenants`.** Abonament to historia, nie stan — samo pole „opłacone do kiedy" zgubiłoby ślad po tym, ile razy i kiedy biuro faktycznie płaciło, a to pierwsze pytanie przy sporze o fakturę. Kwoty w groszach, jak w `pricing_plans`.
+
+**Kolumny `provider` i `provider_reference` istnieją od pierwszej migracji, nie są dopisywane później.** Dziś `provider` to niemal zawsze `'manual'` — operator ręcznie odnotowuje przelew. Docelowa integracja z operatorem płatności (Stripe, Przelewy24, PayU — decyzja jeszcze niepodjęta) ma być dopisaniem klienta API i webhooka tworzącego te same wiersze, a nie zmianą schematu i migracją istniejącej historii.
+
+**Wpis do audit logu dziedziczy tę samą niedoskonałość co przy cenniku (2.10):** `audit_log.tenant_id` to tenant ADMINISTRATORA wykonującego zmianę, nie biura, którego ta zmiana dotyczy. Wpis pozostaje odnajdywalny przez `entity_type` (`tenant`, `tenant_payment`) + `entity_id`, niezależnie od tego, pod jakim `tenant_id` trafił do dziennika.
+
 ---
 
 ## 3. Struktura bazy
@@ -247,9 +269,12 @@ Strona informacyjna (`/`, publiczna trasa SPA) zawiera sekcję cennika, której 
 ```
 tenants ──┬─< users ──< refresh_tokens
           ├─< clients
-          └─< audit_log
+          ├─< audit_log
+          └─< tenant_payments                (Module\Platform — patrz 2.11)
 
-pricing_plans ──< pricing_plan_features     (poza drzewem tenantów — patrz 2.10)
+pricing_plans ──< pricing_plan_features      (poza drzewem tenantów — patrz 2.10)
+     ↑
+     └── tenants.pricing_plan_id (SET NULL)  (Module\Platform — patrz 2.11)
 ```
 
 | Tabela | Klucze i indeksy | Uwagi |
@@ -261,6 +286,7 @@ pricing_plans ──< pricing_plan_features     (poza drzewem tenantów — patr
 | `audit_log` | INDEX `(tenant_id, entity_type, entity_id)`, INDEX `(tenant_id, created_at)`, FK tylko → `tenants` | Brak FK do encji jest celowy |
 | `pricing_plans` | UNIQUE `code`, INDEX `(is_active, position)` | **Bez `tenant_id`** — cennik jest wspólny dla systemu (2.10). Ceny w groszach |
 | `pricing_plan_features` | INDEX `(plan_id, position)`, FK → `pricing_plans` (CASCADE) | Punkty listy; edytowane jako całość |
+| `tenant_payments` | INDEX `(tenant_id, period_start)`, FK → `tenants` (CASCADE), FK → `users` (SET NULL) | Historia płatności biura (2.11). Kwoty w groszach |
 
 Migracje leżą przy modułach, których dotyczą (`Module/*/Migration/`), wspólne w `Shared/Migration/`. Rejestracja przez `sourceNamespaces` w `config/common/params.php`.
 
@@ -272,6 +298,7 @@ Migracje leżą przy modułach, których dotyczą (`Module/*/Migration/`), wspó
 |---|---|---|
 | `ClientRepositoryTest` | PHPUnit + prawdziwy MySQL | Izolacja tenantów na liście, odczycie, edycji i usunięciu; unikalność NIP per biuro; zapis do audit logu |
 | `PricingPlanRepositoryTest` | PHPUnit + prawdziwy MySQL | Lustrzane odbicie testu wyżej: cennik jest **ten sam** z każdego biura; ukryte plany poza wejściem publicznym; kolejność planów i punktów; unikalność kodu; wpis do audit logu |
+| `TenantAdminServiceTest` | PHPUnit + prawdziwy MySQL | Panel operatora widzi wszystkie biura niezależnie od kontekstu; filtrowanie po stanie; blokada logowania po zawieszeniu; przypisanie/odpięcie planu; `ON DELETE SET NULL` po skasowaniu planu z cennika; historia płatności i audit log; metadane pracowników bez danych merytorycznych |
 | `ClientList.spec.ts` | Vitest + Vue Test Utils | Stany listy (ładowanie, pusta, z danymi), formatowanie NIP, emitowane zdarzenia |
 
 **Testy izolacji celowo używają prawdziwej bazy.** Izolacja tenantów jest egzekwowana przez warunki SQL, klucze obce i indeksy. Test na atrapie repozytorium sprawdzałby wyłącznie własną atrapę i przechodziłby także wtedy, gdyby produkcyjne zapytanie gubiło `WHERE tenant_id`. Testy pomijają się z czytelnym komunikatem, gdy MySQL jest niedostępny.
