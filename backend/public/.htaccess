@@ -1,0 +1,41 @@
+# Katalog glowny subdomeny api.* (hosting Cyber-Folks: Apache/LiteSpeed).
+#
+# Docker uzywa nginksa i pliku docker/nginx.conf; ten plik robi to samo dla
+# serwera na hostingu wspoldzielonym. Oba musza dawac ten sam efekt: kazde
+# zadanie, ktore nie wskazuje istniejacego pliku, trafia do index.php, a
+# router Yii decyduje, co dalej.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Zadanie kontrolne CORS (OPTIONS) tez ma isc do PHP - odpowiada na nie
+    # CorsMiddleware, ktore w potoku stoi PRZED routerem. Gdyby Apache
+    # odpowiedzial na nie sam, przegladarka nie dostalaby naglowkow CORS
+    # i zablokowalaby wlasciwe zadanie.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Naglowek Authorization bywa gubiony po drodze do PHP (CGI/FastCGI zdejmuje go
+# ze wzgledow bezpieczenstwa). Bez niego KAZDE chronione zadanie konczy sie
+# bledem 401 "Brak tokenu dostepowego" - a przyczyna nie widac ani w logach
+# aplikacji, ani w przegladarce.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>
+
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
+# Listing katalogow wylaczony - nikt nie ma ogladac zawartosci assets/.
+Options -Indexes
+
+# Pliki, ktore nigdy nie powinny byc pobrane przez przegladarke, nawet gdyby
+# ktos przez pomylke skopiowal je do katalogu publicznego.
+<FilesMatch "^\.env|composer\.(json|lock)$|\.(ya?ml|md|dist|sh)$">
+    Require all denied
+</FilesMatch>

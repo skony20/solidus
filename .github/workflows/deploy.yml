@@ -1,0 +1,169 @@
+# Wdrozenie Solidusa na hosting Cyber-Folks przez SSH (rsync) po pushu na main.
+#
+# Solidus to DWIE aplikacje, wiec sa dwa cele wysylki:
+#  1. backend (Yii3)  -> katalog aplikacji poza web rootem; docroot subdomeny
+#     api.* wskazuje na jego podkatalog public/,
+#  2. frontend (SPA)  -> zbudowany `dist` laduje w public_html glownej domeny.
+#
+# Dlaczego budujemy TUTAJ, a nie na serwerze: ani `vendor/`, ani `dist/` nie sa
+# w repozytorium (patrz .gitignore). Hosting wspoldzielony nie ma Node.js, a
+# `composer install` na serwerze potrafi wywrocic sie na limicie pamieci.
+# Runner buduje jedno i drugie, a na serwer jedzie gotowy wynik.
+#
+# Czego ten workflow NIE robi - swiadomie:
+#  - NIE odpala migracji. `php yii migrate:up` uruchamiasz sam po SSH. Migracja
+#    puszczona automatycznie przy kazdym pushu potrafi zablokowac tabele w
+#    srodku dnia; to ma byc Twoja decyzja, nie efekt uboczny merge'a.
+#  - NIE nadpisuje `.env` na serwerze (jest na liscie --exclude). Sekrety
+#    produkcyjne zyja wylacznie tam.
+#  - NIE kasuje plikow, ktorych nie ma w repo (brak --delete). Plik usuniety z
+#    repo trzeba skasowac na serwerze recznie. Chroni to `runtime/`, `.env`
+#    i katalogi z danymi.
+name: Deploy na serwer (SSH)
+
+on:
+  push:
+    branches: [main]
+  # pozwala odpalic recznie z zakladki Actions
+  workflow_dispatch:
+
+# dwa deploye naraz mieszalyby pliki na serwerze
+concurrency:
+  group: deploy-ssh
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Zbuduj i wyslij przez rsync
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pobierz repozytorium
+        uses: actions/checkout@v5
+
+      # --- BUDOWANIE BACKENDU ------------------------------------------------
+      # Wersja PHP musi byc TA SAMA, co na serwerze. composer.json ma
+      # "php": "~8.5.0", a composer zapisuje w vendor/composer/platform_check.php
+      # kontrole wersji - przy niezgodnosci aplikacja padnie na starcie z
+      # czytelnym komunikatem, zamiast dzialac po polowie.
+      - name: Zainstaluj PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo, pdo_mysql, mbstring, filter, json
+          coverage: none
+
+      - name: Zainstaluj zaleznosci PHP (bez dev)
+        working-directory: backend
+        # --no-dev: na produkcji nie ma po co lezec PHPUnit, Psalm i Codeception.
+        # --optimize-autoloader: mapa klas zamiast skanowania katalogow przy
+        # kazdym zadaniu - na dysku hostingu wspoldzielonego to realna roznica.
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader --prefer-dist
+
+      # --- BUDOWANIE FRONTENDU -----------------------------------------------
+      - name: Zainstaluj Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Zainstaluj zaleznosci frontendu
+        working-directory: frontend
+        # `npm ci` zamiast `npm install`: instaluje dokladnie to, co jest w
+        # package-lock.json, i wywala sie, gdy lock rozjechal sie z package.json.
+        run: npm ci
+
+      - name: Zbuduj SPA
+        working-directory: frontend
+        env:
+          # Adres API jest WKOMPILOWANY w pliki SPA (Vite podstawia zmienne
+          # VITE_* w czasie budowania, nie dziala). Zmiana adresu API wymaga
+          # wiec ponownego zbudowania, a nie tylko edycji pliku na serwerze.
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: |
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::Brak zmiennej VITE_API_URL (Settings -> Secrets and variables -> Actions -> Variables)."
+            echo "::error::Bez niej SPA odpytywalaby http://localhost:8080 i na produkcji nie dzialalaby wcale."
+            exit 1
+          fi
+          npm run build
+
+      # --- WYSYLKA -----------------------------------------------------------
+      - name: Przygotuj klucz SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          # Cyber-Folks trzyma SSH na 222, nie na 22
+          SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # pobranie klucza hosta zamiast wylaczania weryfikacji -
+          # dzieki temu polaczenie nadal jest chronione przed podszyciem
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Wyslij backend
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          # Katalog aplikacji POZA public_html. Docroot subdomeny api.* wskazuje
+          # na jego podkatalog public/, wiec src/, config/ i vendor/ nie sa
+          # dostepne z przegladarki nawet przy zle skonfigurowanym .htaccess.
+          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
+        run: |
+          rsync -rlzv --checksum \
+            -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT -o StrictHostKeyChecking=yes" \
+            --exclude='.git' \
+            --exclude='.git*' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='runtime/' \
+            --exclude='tests/' \
+            --exclude='docker/' \
+            --exclude='.phpunit.cache/' \
+            --exclude='codeception.yml' \
+            --exclude='phpunit.xml.dist' \
+            --exclude='psalm.xml' \
+            --exclude='rector.php' \
+            --exclude='composer-dependency-analyser.php' \
+            --exclude='Makefile' \
+            --exclude='c3.php' \
+            --exclude='yii.bat' \
+            backend/ "$SSH_USER@$SSH_HOST:$REMOTE_APP_DIR/"
+
+      - name: Wyslij SPA
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          # public_html glownej domeny - tu laduje zawartosc frontend/dist.
+          REMOTE_WEB_DIR: ${{ secrets.REMOTE_WEB_DIR }}
+        # Ukosnik na koncu `dist/` jest znaczacy: wysyla ZAWARTOSC katalogu,
+        # a nie sam katalog. Bez niego powstaloby public_html/dist/.
+        run: |
+          rsync -rlzv --checksum \
+            -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT -o StrictHostKeyChecking=yes" \
+            frontend/dist/ "$SSH_USER@$SSH_HOST:$REMOTE_WEB_DIR/"
+
+      # Yii cachuje w runtime/ m.in. plan scalania konfiguracji. Po podmianie
+      # kodu stary cache opisuje poprzednia wersje - czyscimy, zeby aplikacja
+      # nie czytala nieaktualnej mapy. Katalogu nie kasujemy, tylko jego
+      # zawartosc; sam runtime/ musi zostac zapisywalny.
+      - name: Wyczysc cache aplikacji
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "mkdir -p '$REMOTE_APP_DIR/runtime' && rm -rf '$REMOTE_APP_DIR/runtime/cache' && chmod -R u+rwX '$REMOTE_APP_DIR/runtime'"
+
+      - name: Posprzataj klucz
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

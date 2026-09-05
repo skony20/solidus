@@ -20,6 +20,9 @@ use Throwable;
  */
 final readonly class JwtService
 {
+    /** Minimalna dlugosc sekretu HS256 - 256 bitow, tyle ile daje sam algorytm. */
+    private const MIN_SECRET_LENGTH = 32;
+
     public function __construct(
         private RefreshTokenStore $refreshTokenStore,
         private string $secret,
@@ -27,7 +30,28 @@ final readonly class JwtService
         private string $issuer,
         private int $accessTtl,
         private int $refreshTtl,
-    ) {}
+    ) {
+        /*
+         * Bezpiecznik na wdrozenie. `JWT_SECRET` ma domyslna wartosc pusta, wiec
+         * zapomniana zmienna srodowiskowa na serwerze nie wywolalaby zadnego
+         * bledu - aplikacja podpisywalaby tokeny pustym kluczem, ktory zna
+         * kazdy, kto widzial to repozytorium. Kazdy moglby wystawic sobie token
+         * dowolnego uzytkownika dowolnego biura.
+         *
+         * Wyjatek przy starcie jest jedyna reakcja, ktora tego nie przepusci:
+         * aplikacja z zepsutym uwierzytelnianiem ma nie wstac, a nie dzialac
+         * pozornie poprawnie.
+         */
+        if (strlen($this->secret) < self::MIN_SECRET_LENGTH) {
+            throw new \RuntimeException(sprintf(
+                'JWT_SECRET musi miec co najmniej %d znakow (ma %d). '
+                . 'Ustaw go w pliku .env na serwerze, np. wynikiem: '
+                . 'php -r "echo bin2hex(random_bytes(32));"',
+                self::MIN_SECRET_LENGTH,
+                strlen($this->secret),
+            ));
+        }
+    }
 
     /**
      * Wystawia swieza pare tokenow i zapisuje refresh token w bazie,

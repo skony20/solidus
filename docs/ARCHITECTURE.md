@@ -293,12 +293,15 @@ Rzeczy świadomie odłożone — do rozstrzygnięcia przed produkcją:
 7. **Historia zmian nie jest wystawiona w UI.** `AuditLogger::historyFor()` istnieje, ekranu nie ma.
 8. **Rate limiting na `/api/auth/login`.** Brak — do dodania przed wystawieniem na świat.
 9. **`Http*ApiClient` to stuby.** Kontrakty DTO wymagają potwierdzenia z zespołami zewnętrznych aplikacji.
-10. **Sekret JWT w `docker-compose.yml`** jest wartością deweloperską. Na produkcji musi pochodzić z sekretów środowiska; aplikacja go nie waliduje pod kątem długości.
+10. **Sekret JWT w `docker-compose.yml`** jest wartością deweloperską — na produkcji musi pochodzić z `.env` serwera (patrz [DEPLOY.md](DEPLOY.md)). `JwtService` odmawia startu przy sekrecie krótszym niż 32 znaki, więc zapomniana zmienna środowiskowa daje czytelny wyjątek zamiast tokenów podpisanych pustym kluczem.
 11. **Wolne odpowiedzi API na Windowsie: ~3 s na żądanie** (zmierzone: 3,0–6,7 s dla `GET /api/aml`, z czego 0,48 s to samo wczytanie autoloadera). Przyczyną jest bind-mount katalogu z dysku Windows do kontenera — każde żądanie odczytuje kilka tysięcy plików z `vendor/` przez granicę systemów plików. To nie jest problem aplikacji: na Linuksie i na produkcji nie występuje. Obejścia, w kolejności skuteczności: (a) trzymać repozytorium w systemie plików WSL2 (`\\wsl$\...`), a nie na `D:\`; (b) `opcache.validate_timestamps=0` w obrazie — szybko, ale wymaga restartu kontenera po każdej zmianie kodu; (c) zaakceptować na czas developmentu.
 
 ---
 
 ## 6. Uruchomienie dla deweloperów
+
+Wdrożenie produkcyjne (Cyber-Folks, GitHub Actions): [DEPLOY.md](DEPLOY.md).
+
 
 ```bash
 # Całe środowisko

@@ -1,0 +1,35 @@
+# Katalog glowny domeny (SPA). Vite kopiuje zawartosc public/ do dist/ bez
+# zmian, wiec ten plik jedzie na serwer razem z aplikacja.
+#
+# PROBLEM, KTORY ROZWIAZUJE: SPA ma jeden plik index.html i sama obsluguje
+# adresy (/klienci, /admin/cennik). Serwer o tym nie wie - przy odswiezeniu
+# strony na /klienci szuka takiego katalogu i zwraca 404. Regula ponizej
+# oddaje index.html dla kazdego adresu, ktory nie jest istniejacym plikiem.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+Options -Indexes
+
+# Cache. Pliki w assets/ maja skrot tresci w nazwie (index-hKuWC_R2.js), wiec
+# nowa wersja to nowa nazwa - mozna je trzymac w cache dowolnie dlugo.
+# index.html odwrotnie: nazwa jest stala, a to on wskazuje na aktualne pliki,
+# wiec zacachowany serwowalby w kolko stara wersje aplikacji.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|css|woff2?|png|jpe?g|svg|webp|avif)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
