@@ -120,16 +120,32 @@ jobs:
           # dzieki temu polaczenie nadal jest chronione przed podszyciem
           ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
+      # Sekrety-sciezki przechodza przez `xargs` PRZED pierwszym uzyciem, zeby
+      # przypadkowa spacja albo nowa linia wklejona do pola w GitHubie nie
+      # trafila do sciezki docelowej. Bez tego rsync tworzy na serwerze DRUGI
+      # katalog o niemal tej samej nazwie (np. "api-app" i "api-app ") -
+      # swiezy kod laduje sie obok dzialajacego zamiast go zastapic, a
+      # .htaccess (bez spacji w nazwie) nadal wskazuje na stary. Dokladnie to
+      # sie zdarzylo przy pierwszym wdrozeniu tego ukladu - trailing space
+      # w REMOTE_APP_DIR zostawil produkcje na starym kodzie przez cala
+      # dlugosc jednego wdrozenia, mimo zielonego przebiegu w Actions.
+      - name: Oczysc sciezki zdalne z bialych znakow
+        env:
+          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
+          REMOTE_WEB_DIR: ${{ secrets.REMOTE_WEB_DIR }}
+        run: |
+          echo "REMOTE_APP_DIR=$(echo -n "$REMOTE_APP_DIR" | xargs)" >> "$GITHUB_ENV"
+          echo "REMOTE_WEB_DIR=$(echo -n "$REMOTE_WEB_DIR" | xargs)" >> "$GITHUB_ENV"
+
       - name: Wyslij backend
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          # Podkatalog wewnatrz katalogu domeny SPA (patrz uwaga na gorze pliku),
-          # np. /home/UZYTKOWNIK/domains/DOMENA/public_html/SPA/api-app.
-          # src/, config/, vendor/ i .env sa mimo to poza zasiegiem przegladarki -
-          # pilnuje tego backend/.htaccess (`Deny from all`), a nie polozenie.
-          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
+          # REMOTE_APP_DIR (juz oczyszczony, krok wyzej) - podkatalog wewnatrz
+          # katalogu domeny SPA, np. .../public_html/SPA/api-app. src/, config/,
+          # vendor/ i .env sa mimo to poza zasiegiem przegladarki - pilnuje tego
+          # backend/.htaccess (`Deny from all`), a nie samo polozenie.
         run: |
           rsync -rlzv --checksum \
             -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT -o StrictHostKeyChecking=yes" \
@@ -156,12 +172,12 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          # Katalog domeny SPA - tu laduje zawartosc frontend/dist. REMOTE_APP_DIR
+          # REMOTE_WEB_DIR (juz oczyszczony, patrz krok "Oczysc sciezki zdalne")
+          # - katalog domeny SPA, tu laduje zawartosc frontend/dist. REMOTE_APP_DIR
           # (backend) jest jego podkatalogiem, ale ten krok go nie rusza: brak
           # --delete oznacza, ze rsync dotyka wylacznie plikow z `dist/`,
           # podkatalog backendu zostaje nietkniety niezaleznie od kolejnosci
           # tych dwoch kroków wysylki.
-          REMOTE_WEB_DIR: ${{ secrets.REMOTE_WEB_DIR }}
         # Ukosnik na koncu `dist/` jest znaczacy: wysyla ZAWARTOSC katalogu,
         # a nie sam katalog. Bez niego powstaloby REMOTE_WEB_DIR/dist/.
         run: |
@@ -178,7 +194,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT || 222 }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
+          # REMOTE_APP_DIR juz oczyszczony - patrz krok "Oczysc sciezki zdalne".
         run: |
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=yes \
             "$SSH_USER@$SSH_HOST" \

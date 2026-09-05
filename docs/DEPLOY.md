@@ -109,6 +109,8 @@ Jeśli dostajesz `Corrupted MAC on input` — to problem samego łącza (router,
 
 `VITE_API_URL` jest tym samym adresem co SPA (jeden origin) — **bez** `/api` na końcu, ten fragment dokleja już kod frontendu przy wywołaniach. Adres jest wkompilowany w pliki SPA w czasie budowania — zmiana wymaga ponownego wdrożenia, nie edycji na serwerze.
 
+**Wklejając ścieżki do `REMOTE_APP_DIR`/`REMOTE_WEB_DIR`, uważaj na spację lub nową linię na końcu.** GitHub nie przycina białych znaków w polu sekretu — dodatkowa spacja z kopiowania sprawia, że `rsync` tworzy na serwerze DRUGI katalog o niemal tej samej nazwie (np. `api-app` i `api-app ` — do siebie bardzo podobne, dla `ls` nieodróżnialne na pierwszy rzut oka) zamiast nadpisać istniejący. Świeży kod ląduje wtedy obok działającego, a `.htaccess` nadal wskazuje na stary — deploy kończy się zielono w Actions, a serwer i tak odpowiada poprzednią wersją. Workflow od pewnej wersji sam przycina te dwie wartości (krok „Oczysc sciezki zdalne z bialych znakow"), ale nie polegaj na tym przy ręcznym wklejaniu — sprawdź pole przed zapisaniem.
+
 ---
 
 ## Krok 4. Przygotuj serwer
@@ -236,6 +238,7 @@ W przeglądarce:
 | Migracja pada na `Unknown collation` | Migracja używa `utf8mb4_0900_ai_ci` (MySQL 8) na serwerze z MariaDB — popraw na `utf8mb4_unicode_ci` |
 | `php yii migrate:up` nic nie robi / błąd wersji | Użyj `php85 yii migrate:up`, nie `php yii migrate:up` — domyślne `php` na koncie to 8.2 |
 | Zmiany w kodzie nie widać | Cache opcode PHP — restart PHP z panelu Cyber-Folks |
+| Deploy zielony w Actions, ale serwer nadal odpowiada starym kodem | Sprawdź `ls -la` katalogu domeny po SSH: czy jest tylko jeden `api-app`, czy dwa niemal identyczne (np. `api-app` i `api-app ` ze spacją na końcu)? Trailing whitespace w sekrecie `REMOTE_APP_DIR`/`REMOTE_WEB_DIR` tworzy drugi katalog zamiast nadpisać pierwszy — napraw sekret, usuń zbędny katalog, wdróż ponownie |
 
 ### Czego wdrożenie celowo nie robi
 
