@@ -22,7 +22,7 @@ use Yiisoft\Db\Migration\TransactionalMigrationInterface;
  */
 final class M250904100400CreateAuditLog implements RevertibleMigrationInterface, TransactionalMigrationInterface
 {
-    private const OPTIONS = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci';
+    private const OPTIONS = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
 
     public function up(MigrationBuilder $b): void
     {

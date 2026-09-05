@@ -54,7 +54,18 @@ services:
 
   mysql:
     image: mysql:8.0
-    command: --default-authentication-plugin=caching_sha2_password
+    # Kolacja i zestaw znakow ida ARGUMENTAMI, a nie przez mysql/my.cnf:
+    # MySQL ignoruje pliki konfiguracyjne zapisywalne dla wszystkich, a bind-mount
+    # z Windowsa nadaje wlasnie takie prawa - plik byl wiec po cichu pomijany.
+    #
+    # `utf8mb4_unicode_ci` zamiast `utf8mb4_0900_ai_ci`, bo ta druga istnieje
+    # tylko w MySQL 8. Produkcja stoi na MariaDB, ktora jej nie zna. Kolacja
+    # decyduje o porownywaniu tekstu, wiec dev musi miec ta sama co produkcja -
+    # inaczej UNIQUE na e-mailu zachowuje sie tu i tam inaczej.
+    command: >-
+      --default-authentication-plugin=caching_sha2_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
     ports:
       - "3306:3306"
     environment:

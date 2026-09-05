@@ -97,7 +97,7 @@ abstract class DatabaseTestCase extends TestCase
     {
         $this->dropSchema();
 
-        $options = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci';
+        $options = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
 
         $this->db->createCommand()->createTable('tenants', [
             'id' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',

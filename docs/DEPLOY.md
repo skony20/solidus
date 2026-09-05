@@ -29,6 +29,15 @@ ls /usr/local/php*/bin/php 2>/dev/null || ls /opt/alt/php*/usr/bin/php 2>/dev/nu
 
 W panelu Cyber-Folks wersję PHP ustawia się osobno **dla każdej domeny i subdomeny** — subdomena `api.` musi mieć 8.5, główna domena nie ma znaczenia (serwuje same pliki statyczne).
 
+**W konsoli to osobna sprawa.** Domyślny `php` na tym koncie to 8.2, niezależnie od ustawienia domeny. Każdą komendę projektu wywołuj przez `php85`:
+
+```bash
+php85 -v                    # sprawdzenie
+php85 yii migrate:up        # zamiast `php yii migrate:up`
+```
+
+Pełna ścieżka, gdyby `php85` zniknęło z PATH: `/opt/alt/php85/usr/bin/php`.
+
 **Jeśli hostingu nie stać na 8.5:** nie ma sensu iść dalej z wdrożeniem. Trzeba wtedy poluzować wymaganie w `composer.json` do wersji dostępnej na serwerze (`~8.4.0`), przebudować `composer.lock` i przetestować projekt na tej wersji — kod nie używa dziś składni wyłącznej dla 8.5, ale to trzeba potwierdzić testami, a nie założyć.
 
 Wersja PHP w kroku „Zainstaluj PHP 8.5" w workflow **musi być ta sama, co na serwerze**.
@@ -132,6 +141,14 @@ Kluczowy jest ten katalog. Wskazanie na `public/`, a nie na `backend/`, sprawia,
 
 W panelu: **Bazy danych → Dodaj**. Zanotuj nazwę bazy, użytkownika i hasło — Cyber-Folks zwykle dokleja do nich prefiks konta.
 
+Sprawdź, co dostałeś, zanim pójdziesz dalej:
+
+```bash
+mysql -u UZYTKOWNIK_BAZY -p NAZWA_BAZY -e "SELECT VERSION();"
+```
+
+Serwer to **MariaDB**, nie MySQL 8 — dlatego migracje używają kolacji `utf8mb4_unicode_ci`. Kolacja `utf8mb4_0900_ai_ci` istnieje wyłącznie w MySQL 8 i na tym serwerze migracje wywracały się na błędzie 1273 „Unknown collation".
+
 ### 4d. Plik `.env` na serwerze
 
 Tego pliku **nie wysyła wdrożenie** (jest na liście wykluczeń), więc tworzysz go raz, ręcznie:
@@ -161,7 +178,7 @@ chmod 600 .env
 Sekret wygeneruj **na serwerze** i wklej do pliku:
 
 ```bash
-php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+php85 -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
 ```
 
 Trzy rzeczy, które łatwo tu przeoczyć:
@@ -185,7 +202,7 @@ Po zakończeniu — migracje, raz, ręcznie:
 ```bash
 ssh -p 222 lyvelmikov@s66.cyber-folks.pl
 cd ~/domains/norios.pl/solidus-api
-php yii migrate:up
+php85 yii migrate:up
 ```
 
 Migracje **nie idą automatycznie** i to jest decyzja projektowa: migracja odpalona przy każdym pushu potrafi zablokować tabelę w środku dnia pracy biura. Uruchamiasz je świadomie, po każdym wdrożeniu, które dodało pliki w `Module/*/Migration/`.
@@ -193,7 +210,7 @@ Migracje **nie idą automatycznie** i to jest decyzja projektowa: migracja odpal
 Konto administratora systemu (dostęp do cennika) — też z konsoli:
 
 ```bash
-php yii admin:grant slug-biura adres@email.pl
+php85 yii admin:grant slug-biura adres@email.pl
 ```
 
 ---
