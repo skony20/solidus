@@ -5,10 +5,10 @@ Automatyczne wdrożenie po pushu na `main`: `.github/workflows/deploy.yml`.
 Solidus to **dwie aplikacje**, więc i cele wdrożenia są dwa:
 
 ```
-domena.pl          → public_html/            ← zbudowana SPA (statyczne pliki)
-api.domena.pl      → solidus/backend/public/ ← Yii3, katalog główny subdomeny
-                     solidus/backend/        ← kod aplikacji, POZA public_html
-                     solidus/backend/.env    ← sekrety, nigdy w repozytorium
+solidus.norios.pl      → public_html/solidus/     ← zbudowana SPA (pliki statyczne)
+api.solidus.norios.pl  → solidus-api/public/      ← Yii3, katalog główny subdomeny
+                         solidus-api/             ← kod aplikacji, OBOK public_html
+                         solidus-api/.env         ← sekrety, nigdy w repozytorium
 ```
 
 Runner GitHuba buduje `vendor/` (Composer) i `dist/` (Vite), bo żadnego z nich nie ma w repozytorium, a hosting współdzielony nie ma Node.js. Na serwer jedzie gotowy wynik.
@@ -64,7 +64,7 @@ Powstaną dwa pliki: `solidus_deploy` (prywatny) i `solidus_deploy.pub` (publicz
 Klucz publiczny dopisz na serwerze do `~/.ssh/authorized_keys` — przez panel Cyber-Folks (SSH → klucze) albo ręcznie:
 
 ```bash
-ssh -p 222 UŻYTKOWNIK@SERWER
+ssh -p 222 lyvelmikov@s66.cyber-folks.pl
 mkdir -p ~/.ssh && chmod 700 ~/.ssh
 echo "ssh-ed25519 AAAA... github-deploy-solidus" >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
@@ -73,7 +73,7 @@ chmod 600 ~/.ssh/authorized_keys
 Sprawdź, czy działa bez hasła:
 
 ```bash
-ssh -i ~/.ssh/solidus_deploy -p 222 UŻYTKOWNIK@SERWER "echo polaczenie-ok"
+ssh -i ~/.ssh/solidus_deploy -p 222 lyvelmikov@s66.cyber-folks.pl "echo polaczenie-ok"
 ```
 
 ---
@@ -87,17 +87,17 @@ ssh -i ~/.ssh/solidus_deploy -p 222 UŻYTKOWNIK@SERWER "echo polaczenie-ok"
 | Nazwa | Wartość | Uwagi |
 |---|---|---|
 | `SSH_KEY` | cała zawartość `~/.ssh/solidus_deploy` | Z linijkami `-----BEGIN…` i `-----END…` włącznie |
-| `SSH_HOST` | np. `s123.cyber-folks.pl` | Adres serwera z panelu, nie domena |
-| `SSH_USER` | nazwa konta SSH | |
+| `SSH_HOST` | `s66.cyber-folks.pl` | Adres serwera z panelu, nie domena |
+| `SSH_USER` | `lyvelmikov` | |
 | `SSH_PORT` | `222` | Można pominąć — workflow domyślnie używa 222 |
-| `REMOTE_APP_DIR` | `/home/UŻYTKOWNIK/domains/domena.pl/solidus/backend` | Pełna ścieżka, **bez** ukośnika na końcu |
-| `REMOTE_WEB_DIR` | `/home/UŻYTKOWNIK/domains/domena.pl/public_html` | Katalog główny domeny |
+| `REMOTE_APP_DIR` | `/home/lyvelmikov/domains/norios.pl/solidus-api` | Pełna ścieżka, **bez** ukośnika na końcu |
+| `REMOTE_WEB_DIR` | `/home/lyvelmikov/domains/norios.pl/public_html/solidus` | Katalog główny subdomeny SPA |
 
 **Zakładka Variables** (`New repository variable`):
 
 | Nazwa | Wartość |
 |---|---|
-| `VITE_API_URL` | `https://api.domena.pl` |
+| `VITE_API_URL` | `https://api.solidus.norios.pl` |
 
 `VITE_API_URL` jest zmienną, a nie sekretem, bo i tak trafia do plików JavaScript widocznych w przeglądarce. **Adres API jest wkompilowany w SPA** — jego zmiana wymaga ponownego zbudowania aplikacji, sama edycja plików na serwerze nic nie da.
 
@@ -110,19 +110,19 @@ Po SSH ścieżki są pełne. To, co panel FTP pokazuje jako katalog główny, je
 ### 4a. Katalogi
 
 ```bash
-ssh -p 222 UŻYTKOWNIK@SERWER
-cd ~/domains/domena.pl
-mkdir -p solidus/backend/runtime
-chmod 755 solidus solidus/backend
-chmod 775 solidus/backend/runtime     # Yii musi mieć tu prawo zapisu
+ssh -p 222 lyvelmikov@s66.cyber-folks.pl
+cd ~/domains/norios.pl
+mkdir -p solidus-api/public solidus-api/runtime
+chmod 755 solidus-api
+chmod 775 solidus-api/runtime     # Yii musi mieć tu prawo zapisu
 ```
 
-### 4b. Subdomena `api.domena.pl`
+### 4b. Subdomena `api.solidus.norios.pl`
 
 W panelu Cyber-Folks: **Domeny → Subdomeny → Dodaj**.
 
-- nazwa: `api`
-- katalog: `domains/domena.pl/solidus/backend/public` ← **nie** `public_html`
+- nazwa: `api.solidus`
+- katalog: `domains/norios.pl/solidus-api/public` ← katalog **obok** `public_html`, nie w środku
 - PHP: **8.5**
 - SSL: włącz Let's Encrypt
 
@@ -137,7 +137,7 @@ W panelu: **Bazy danych → Dodaj**. Zanotuj nazwę bazy, użytkownika i hasło 
 Tego pliku **nie wysyła wdrożenie** (jest na liście wykluczeń), więc tworzysz go raz, ręcznie:
 
 ```bash
-cd ~/domains/domena.pl/solidus/backend
+cd ~/domains/norios.pl/solidus-api
 cat > .env <<'EOF'
 APP_ENV=prod
 APP_DEBUG=false
@@ -153,7 +153,7 @@ JWT_ACCESS_TTL=900
 JWT_REFRESH_TTL=2592000
 JWT_ISSUER=solidus
 
-FRONTEND_ORIGIN=https://domena.pl
+FRONTEND_ORIGIN=https://solidus.norios.pl
 EOF
 chmod 600 .env
 ```
@@ -183,8 +183,8 @@ Postęp: zakładka **Actions** w repozytorium. Można też uruchomić ręcznie: 
 Po zakończeniu — migracje, raz, ręcznie:
 
 ```bash
-ssh -p 222 UŻYTKOWNIK@SERWER
-cd ~/domains/domena.pl/solidus/backend
+ssh -p 222 lyvelmikov@s66.cyber-folks.pl
+cd ~/domains/norios.pl/solidus-api
 php yii migrate:up
 ```
 
@@ -202,18 +202,18 @@ php yii admin:grant slug-biura adres@email.pl
 
 ```bash
 # API odpowiada i widzi bazę
-curl -s https://api.domena.pl/api/pricing
+curl -s https://api.solidus.norios.pl/api/pricing
 
 # CORS zwraca właściwe pochodzenie
-curl -s -I -X OPTIONS https://api.domena.pl/api/auth/login \
-  -H "Origin: https://domena.pl" -H "Access-Control-Request-Method: POST" \
+curl -s -I -X OPTIONS https://api.solidus.norios.pl/api/auth/login \
+  -H "Origin: https://solidus.norios.pl" -H "Access-Control-Request-Method: POST" \
   | grep -i access-control-allow-origin
 ```
 
 W przeglądarce:
 
-1. `https://domena.pl` — strona informacyjna z cennikiem (cennik = dowód, że SPA rozmawia z API).
-2. `https://domena.pl/klienci` — **odśwież stronę**. Jeśli widzisz 404, `.htaccess` nie zadziałał (patrz niżej).
+1. `https://solidus.norios.pl` — strona informacyjna z cennikiem (cennik = dowód, że SPA rozmawia z API).
+2. `https://solidus.norios.pl/klienci` — **odśwież stronę**. Jeśli widzisz 404, `.htaccess` nie zadziałał (patrz niżej).
 3. Zaloguj się, odśwież — sesja ma przetrwać. Jeśli wyrzuca do logowania, sprawdź HTTPS: ciasteczko refresh ma flagę `Secure` i po HTTP nie zostanie zapisane.
 
 ---
@@ -222,7 +222,7 @@ W przeglądarce:
 
 | Objaw | Przyczyna |
 |---|---|
-| Błąd 500 na całym API | Najczęściej wersja PHP (krok 0) albo brak praw zapisu do `runtime/`. Log: `solidus/backend/runtime/logs/` |
+| Błąd 500 na całym API | Najczęściej wersja PHP (krok 0) albo brak praw zapisu do `runtime/`. Log: `solidus-api/runtime/logs/` |
 | `Brak tokenu dostepowego` mimo zalogowania | Serwer zjada nagłówek `Authorization`. Obsługuje to `backend/public/.htaccess` — sprawdź, czy plik dojechał |
 | 404 po odświeżeniu na `/klienci` | Brak `.htaccess` w `public_html` lub wyłączony `mod_rewrite`. Plik jedzie z `frontend/public/.htaccess` przez `dist/` |
 | Przeglądarka blokuje żądania (CORS) | `FRONTEND_ORIGIN` w `.env` nie zgadza się co do znaku z adresem SPA |
@@ -234,4 +234,4 @@ W przeglądarce:
 - **Nie kasuje plików usuniętych z repozytorium** (brak `--delete` w `rsync`). Chroni to `.env`, `runtime/` i dane na serwerze; plik skasowany w repo trzeba usunąć ręcznie.
 - **Nie odpala migracji** — patrz krok 5.
 - **Nie nadpisuje `.env`.**
-- **Nie robi kopii zapasowej.** Backup bazy przed wdrożeniem z migracjami jest po Twojej stronie: `mysqldump -u UŻYTKOWNIK -p NAZWA_BAZY > backup-$(date +%F).sql`
+- **Nie robi kopii zapasowej.** Backup bazy przed wdrożeniem z migracjami jest po Twojej stronie: `mysqldump -u UZYTKOWNIK_BAZY -p NAZWA_BAZY > backup-$(date +%F).sql`
