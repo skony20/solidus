@@ -1,0 +1,20 @@
+# Blokada katalogu aplikacji.
+#
+# DLACZEGO TO ISTNIEJE: hosting Cyber-Folks uruchamia PHP wylacznie dla plikow
+# lezacych fizycznie w `public_html`. Katalog aplikacji musi wiec byc w srodku,
+# a nie - jak nakazywalby zdrowy rozsadek - obok niego. Sprawdzone: PHP poza
+# `public_html` zwraca 500 z pusta trescia, takze przez dowiazanie symboliczne.
+#
+# Skoro `src/`, `config/`, `vendor/` i `.env` leza w katalogu publicznym, to
+# jedyne, co dzieli je od przegladarki, jest ten plik. Bez niego kazdy moglby
+# wywolac dowolny plik PHP aplikacji z pominieciem `public/index.php`.
+#
+# Katalogu glownego subdomeny (`public/`) ta blokada nie dotyczy - serwer czyta
+# pliki .htaccess od katalogu glownego W DOL, a ten lezy nad nim. Dla pewnosci
+# `public/.htaccess` zawiera mimo to jawne zezwolenie.
+#
+# Skladnia jest STARA (`Order`/`Deny`), a nie `Require all denied` z Apache 2.4.
+# Sprawdzone na tym serwerze: nowa skladnia jest po cichu ignorowana - pliki
+# pozostawaly dostepne, mimo ze regula wygladala poprawnie.
+Order deny,allow
+Deny from all

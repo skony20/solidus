@@ -5,13 +5,24 @@ Automatyczne wdrożenie po pushu na `main`: `.github/workflows/deploy.yml`.
 Solidus to **dwie aplikacje**, więc i cele wdrożenia są dwa:
 
 ```
-solidus.norios.pl      → public_html/solidus/     ← zbudowana SPA (pliki statyczne)
-api.solidus.norios.pl  → solidus-api/public/      ← Yii3, katalog główny subdomeny
-                         solidus-api/             ← kod aplikacji, OBOK public_html
-                         solidus-api/.env         ← sekrety, nigdy w repozytorium
+solidus.norios.pl      → public_html/solidus/                ← zbudowana SPA (pliki statyczne)
+api.solidus.norios.pl  → public_html/solidus-api/public/     ← Yii3, katalog główny subdomeny
+                         public_html/solidus-api/            ← kod aplikacji + .htaccess z blokadą
+                         public_html/solidus-api/.env        ← sekrety, nigdy w repozytorium
 ```
 
 Runner GitHuba buduje `vendor/` (Composer) i `dist/` (Vite), bo żadnego z nich nie ma w repozytorium, a hosting współdzielony nie ma Node.js. Na serwer jedzie gotowy wynik.
+
+**Dlaczego kod aplikacji leży w `public_html`, skoro nie powinien.** Cyber-Folks uruchamia PHP wyłącznie dla plików leżących fizycznie w `public_html`. Katalog aplikacji obok niego — układ poprawny z punktu widzenia bezpieczeństwa — daje na każde żądanie **500 z pustą treścią**, bo serwer nie ma czym wykonać `.php`. Sprawdzone również przez dowiązanie symboliczne: nie pomaga, liczy się ścieżka fizyczna.
+
+Zamiast tego katalog aplikacji jest zablokowany plikiem `backend/.htaccess` (`Deny from all`), a `backend/public/.htaccess` zawiera jawne zezwolenie dla samego katalogu głównego subdomeny. Oba jadą z repozytorium, więc wdrożenie ich nie gubi. Sprawdzenie po każdej większej zmianie:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}
+" https://norios.pl/solidus-api/.env          # ma być 403
+curl -s -o /dev/null -w "%{http_code}
+" https://norios.pl/solidus-api/src/bootstrap.php  # ma być 403
+```
 
 ---
 
@@ -99,7 +110,7 @@ ssh -i ~/.ssh/solidus_deploy -p 222 lyvelmikov@s66.cyber-folks.pl "echo polaczen
 | `SSH_HOST` | `s66.cyber-folks.pl` | Adres serwera z panelu, nie domena |
 | `SSH_USER` | `lyvelmikov` | |
 | `SSH_PORT` | `222` | Można pominąć — workflow domyślnie używa 222 |
-| `REMOTE_APP_DIR` | `/home/lyvelmikov/domains/norios.pl/solidus-api` | Pełna ścieżka, **bez** ukośnika na końcu |
+| `REMOTE_APP_DIR` | `/home/lyvelmikov/domains/norios.pl/public_html/solidus-api` | Pełna ścieżka, **bez** ukośnika na końcu |
 | `REMOTE_WEB_DIR` | `/home/lyvelmikov/domains/norios.pl/public_html/solidus` | Katalog główny subdomeny SPA |
 
 **Zakładka Variables** (`New repository variable`):
@@ -120,7 +131,7 @@ Po SSH ścieżki są pełne. To, co panel FTP pokazuje jako katalog główny, je
 
 ```bash
 ssh -p 222 lyvelmikov@s66.cyber-folks.pl
-cd ~/domains/norios.pl
+cd ~/domains/norios.pl/public_html
 mkdir -p solidus-api/public solidus-api/runtime
 chmod 755 solidus-api
 chmod 775 solidus-api/runtime     # Yii musi mieć tu prawo zapisu
@@ -131,7 +142,7 @@ chmod 775 solidus-api/runtime     # Yii musi mieć tu prawo zapisu
 W panelu Cyber-Folks: **Domeny → Subdomeny → Dodaj**.
 
 - nazwa: `api.solidus`
-- katalog: `domains/norios.pl/solidus-api/public` ← katalog **obok** `public_html`, nie w środku
+- katalog: `domains/norios.pl/public_html/solidus-api/public` ← **w środku** `public_html`, patrz uwaga na początku
 - PHP: **8.5**
 - SSL: włącz Let's Encrypt
 
@@ -147,14 +158,16 @@ Sprawdź, co dostałeś, zanim pójdziesz dalej:
 mysql -u UZYTKOWNIK_BAZY -p NAZWA_BAZY -e "SELECT VERSION();"
 ```
 
-Serwer to **MariaDB**, nie MySQL 8 — dlatego migracje używają kolacji `utf8mb4_unicode_ci`. Kolacja `utf8mb4_0900_ai_ci` istnieje wyłącznie w MySQL 8 i na tym serwerze migracje wywracały się na błędzie 1273 „Unknown collation".
+Serwer to **MariaDB 10.6**, nie MySQL 8 — dlatego migracje używają kolacji `utf8mb4_unicode_ci`. Kolacja `utf8mb4_0900_ai_ci` istnieje wyłącznie w MySQL 8 i na tym serwerze migracje wywracały się na błędzie 1273 „Unknown collation".
+
+Domyślna kolacja samej bazy założonej przez panel to `utf8mb3_general_ci` — czyli **nie** utf8mb4. Tabele Solidusa mają utf8mb4 wymuszone jawnie w każdej migracji, a połączenie ustawia `charset=utf8mb4`, więc polskie znaki i emoji działają. Ale każda nowa tabela utworzona **bez** jawnego `CHARSET=utf8mb4` odziedziczy utf8mb3 i cicho obetnie takie znaki.
 
 ### 4d. Plik `.env` na serwerze
 
 Tego pliku **nie wysyła wdrożenie** (jest na liście wykluczeń), więc tworzysz go raz, ręcznie:
 
 ```bash
-cd ~/domains/norios.pl/solidus-api
+cd ~/domains/norios.pl/public_html/solidus-api
 cat > .env <<'EOF'
 APP_ENV=prod
 APP_DEBUG=false
@@ -201,7 +214,7 @@ Po zakończeniu — migracje, raz, ręcznie:
 
 ```bash
 ssh -p 222 lyvelmikov@s66.cyber-folks.pl
-cd ~/domains/norios.pl/solidus-api
+cd ~/domains/norios.pl/public_html/solidus-api
 php85 yii migrate:up
 ```
 
@@ -239,7 +252,7 @@ W przeglądarce:
 
 | Objaw | Przyczyna |
 |---|---|
-| Błąd 500 na całym API | Najczęściej wersja PHP (krok 0) albo brak praw zapisu do `runtime/`. Log: `solidus-api/runtime/logs/` |
+| Błąd 500 na całym API | Najczęściej wersja PHP (krok 0) albo brak praw zapisu do `runtime/`. Log: `public_html/solidus-api/runtime/logs/` |
 | `Brak tokenu dostepowego` mimo zalogowania | Serwer zjada nagłówek `Authorization`. Obsługuje to `backend/public/.htaccess` — sprawdź, czy plik dojechał |
 | 404 po odświeżeniu na `/klienci` | Brak `.htaccess` w `public_html` lub wyłączony `mod_rewrite`. Plik jedzie z `frontend/public/.htaccess` przez `dist/` |
 | Przeglądarka blokuje żądania (CORS) | `FRONTEND_ORIGIN` w `.env` nie zgadza się co do znaku z adresem SPA |
