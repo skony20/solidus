@@ -159,8 +159,8 @@ JWT_ISSUER=solidus
 
 FRONTEND_ORIGIN=https://solidus.norios.pl
 
-MAILER_DSN=smtp://uzytkownik:haslo@smtp.serwer:587
-MAILER_FROM=no-reply@solidus.norios.pl
+MAILER_DSN=smtp://SKRZYNKA%40norios.pl:HASLO@s66.cyber-folks.pl:465
+MAILER_FROM=no-reply@norios.pl
 MAILER_FROM_NAME=Solidus
 EOF
 chmod 600 .env
@@ -177,7 +177,11 @@ Trzy rzeczy łatwe do przeoczenia:
 - **`APP_DEBUG=false` jest obowiązkowe.** Przy `true` strona błędu pokazuje ślad stosu razem z hasłem do bazy.
 - **`JWT_SECRET` musi mieć min. 32 znaki.** Aplikacja odmówi startu z krótszym — celowo, bo pusty sekret pozwoliłby każdemu wystawić sobie token dowolnego użytkownika.
 - **`FRONTEND_ORIGIN` = dokładnie ten sam adres, pod którym stoi SPA** (`https://solidus.norios.pl`, bez ukośnika na końcu). Skoro API i SPA mają teraz jedno pochodzenie, ta wartość rzadko kiedy zadziała inaczej niż poprawnie — ale zostaje w kodzie jako zabezpieczenie na wypadek żądań z innego originu (np. narzędzia deweloperskie, przyszły klient mobilny).
-- **`MAILER_DSN` w formacie Symfony Mailer** (`smtp://user:pass@host:port`, ewentualnie `?encryption=tls`). Używa go tylko rejestracja — do wysyłki kodu potwierdzającego adres e-mail. Bez poprawnego DSN konto i tak powstaje, ale `emailSent: false` i użytkownik nie dostanie kodu. Domyślna wartość (`smtp://mailhog:1025`) działa wyłącznie w dev.
+- **`MAILER_DSN` MUSI być SMTP, nie `sendmail`.** Cyber-Folks blokuje `proc_open()` w kontekście web ("domain protection" / WAF), a `sendmail://default` w Symfony Mailer zawsze woła `/usr/sbin/sendmail -bs` przez `proc_open` — kończy się to `E_USER_WARNING` i błędem 500 na każdym żądaniu do rejestracji. Działa wyłącznie transport SMTP przez gniazdo.
+  - Format: `smtp://SKRZYNKA%40norios.pl:HASLO@s66.cyber-folks.pl:465` — `@` w loginie zakodowane jako `%40`, znaki spoza `A-Za-z0-9._-` w haśle też trzeba zakodować (`php85 -r 'echo rawurlencode($argv[1]);' 'HASLO'`).
+  - Host `s66.cyber-folks.pl` (nie `127.0.0.1` — certyfikat STARTTLS jest na `*.cyber-folks.pl`, a lokalny relay bez logowania jest zablokowany: `550 authentication required`). Port `465` (SSL) lub `587` (STARTTLS).
+  - `SKRZYNKA` to istniejące konto pocztowe założone w panelu; `MAILER_FROM` musi być adresem w tej samej domenie.
+  - Kod jest odporny na awarię poczty: zły DSN / błąd wysyłki daje `emailSent: false` i HTTP 201 (konto powstaje), a nie 500. Kod można potem wysłać ponownie przez `POST /api/auth/resend-code`.
 
 ---
 
