@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import heroImage from '../../assets/landing-hero.jpg'
 import AuditQuiz from './AuditQuiz.vue'
-import PricingSection from './PricingSection.vue'
+// import PricingSection from './PricingSection.vue' // cennik chwilowo ukryty
 
 /**
  * Strona informacyjna Solidusa - jedyny widok dostepny bez logowania poza
@@ -98,12 +98,14 @@ function scrollTo(id: string): void {
           >
             Dlaczego Solidus
           </a>
+          <!-- Cennik chwilowo ukryty
           <a
             href="#cennik"
             class="text-sm font-semibold text-content-variant no-underline hover:text-content max-[720px]:hidden"
           >
             Cennik
           </a>
+          -->
           <a
             href="#audyt"
             class="text-sm font-semibold text-content-variant no-underline hover:text-content max-[720px]:hidden"
@@ -160,9 +162,11 @@ function scrollTo(id: string): void {
             >
               Sprawdź swoje ryzyko — 2 minuty
             </button>
+            <!-- Cennik chwilowo ukryty
             <a href="#cennik" class="text-sm font-semibold text-cyan-bright no-underline">
               Zobacz cennik
             </a>
+            -->
           </div>
           <div class="mt-9 flex flex-wrap gap-2.5">
             <span
@@ -290,8 +294,8 @@ function scrollTo(id: string): void {
       </div>
     </section>
 
-    <!-- ===== CENNIK (z bazy) ===== -->
-    <PricingSection />
+    <!-- ===== CENNIK (z bazy) — chwilowo ukryty ===== -->
+    <!-- <PricingSection /> -->
 
     <!-- ===== AUDYT AML ===== -->
     <section id="audyt" class="py-[74px]">
