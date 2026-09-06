@@ -291,7 +291,7 @@ function scrollTo(id: string): void {
     </section>
 
     <!-- ===== CENNIK (z bazy) ===== -->
-<!--    <PricingSection />-->
+    <PricingSection />
 
     <!-- ===== AUDYT AML ===== -->
     <section id="audyt" class="py-[74px]">
