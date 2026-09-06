@@ -39,6 +39,8 @@ return [
     Group::create('/api/auth')
         ->routes(
             Route::post('/register')->action([RegistrationController::class, 'register'])->name('auth/register'),
+            Route::post('/verify-email')->action([RegistrationController::class, 'verifyEmail'])->name('auth/verify-email'),
+            Route::post('/resend-code')->action([RegistrationController::class, 'resendCode'])->name('auth/resend-code'),
             Route::post('/login')->action([AuthController::class, 'login'])->name('auth/login'),
             Route::post('/refresh')->action([AuthController::class, 'refresh'])->name('auth/refresh'),
             Route::post('/logout')->action([AuthController::class, 'logout'])->name('auth/logout'),

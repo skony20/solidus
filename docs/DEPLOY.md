@@ -158,6 +158,10 @@ JWT_REFRESH_TTL=2592000
 JWT_ISSUER=solidus
 
 FRONTEND_ORIGIN=https://solidus.norios.pl
+
+MAILER_DSN=smtp://uzytkownik:haslo@smtp.serwer:587
+MAILER_FROM=no-reply@solidus.norios.pl
+MAILER_FROM_NAME=Solidus
 EOF
 chmod 600 .env
 ```
@@ -173,6 +177,7 @@ Trzy rzeczy łatwe do przeoczenia:
 - **`APP_DEBUG=false` jest obowiązkowe.** Przy `true` strona błędu pokazuje ślad stosu razem z hasłem do bazy.
 - **`JWT_SECRET` musi mieć min. 32 znaki.** Aplikacja odmówi startu z krótszym — celowo, bo pusty sekret pozwoliłby każdemu wystawić sobie token dowolnego użytkownika.
 - **`FRONTEND_ORIGIN` = dokładnie ten sam adres, pod którym stoi SPA** (`https://solidus.norios.pl`, bez ukośnika na końcu). Skoro API i SPA mają teraz jedno pochodzenie, ta wartość rzadko kiedy zadziała inaczej niż poprawnie — ale zostaje w kodzie jako zabezpieczenie na wypadek żądań z innego originu (np. narzędzia deweloperskie, przyszły klient mobilny).
+- **`MAILER_DSN` w formacie Symfony Mailer** (`smtp://user:pass@host:port`, ewentualnie `?encryption=tls`). Używa go tylko rejestracja — do wysyłki kodu potwierdzającego adres e-mail. Bez poprawnego DSN konto i tak powstaje, ale `emailSent: false` i użytkownik nie dostanie kodu. Domyślna wartość (`smtp://mailhog:1025`) działa wyłącznie w dev.
 
 ---
 
@@ -194,15 +199,28 @@ php85 yii migrate:up
 
 Migracje **nie idą automatycznie** — decyzja projektowa: migracja odpalona przy każdym pushu potrafi zablokować tabelę w środku dnia pracy biura. Uruchamiasz je świadomie, po każdym wdrożeniu, które dodało pliki w `Module/*/Migration/`.
 
-Pierwsze biuro (ekranu rejestracji jeszcze nie ma):
+Pierwsze biuro — ekran rejestracji jest pod `/rejestracja`, ale wymaga
+potwierdzenia adresu e-mail kodem, więc na czystym serwerze wygodniej założyć
+je z konsoli. Rejestracja przez API składa się z dwóch kroków:
 
 ```bash
+# 1. Zalozenie konta - w odpowiedzi jest `slug` biura. Konto jest jeszcze
+#    nieaktywne: na podany adres leci 6-cyfrowy kod.
 curl -s -X POST https://solidus.norios.pl/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"tenantName":"Nazwa biura","email":"twoj@email.pl","password":"tu-dlugie-haslo","name":"Imie Nazwisko"}'
+
+# 2. Potwierdzenie adresu kodem z maila - aktywuje konto i od razu loguje.
+curl -s -X POST https://solidus.norios.pl/api/auth/verify-email \
+  -H "Content-Type: application/json" \
+  -d '{"tenant":"slug-biura","email":"twoj@email.pl","code":"123456"}'
 ```
 
-W odpowiedzi jest `slug` biura. Konto administratora systemu (panel `/admin/cennik` i `/admin/biura`) — z konsoli:
+Wysyłka maila wymaga skonfigurowanego `MAILER_DSN` (patrz Krok 3) — bez niego
+`register` zwróci `emailSent: false` i trzeba użyć `POST /api/auth/resend-code`
+po naprawieniu konfiguracji.
+
+Konto administratora systemu (panel `/admin/cennik` i `/admin/biura`) — z konsoli:
 
 ```bash
 php85 yii admin:grant slug-biura twoj@email.pl

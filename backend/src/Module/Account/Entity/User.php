@@ -27,6 +27,7 @@ final class User
         public bool $isActive,
         public DateTimeImmutable $createdAt,
         public DateTimeImmutable $updatedAt,
+        public ?DateTimeImmutable $emailVerifiedAt = null,
     ) {}
 
     /**
@@ -41,6 +42,8 @@ final class User
             static fn(mixed $role): bool => is_string($role),
         ));
 
+        $verifiedAt = $row['email_verified_at'] ?? null;
+
         return new self(
             id: (int) $row['id'],
             tenantId: (int) $row['tenant_id'],
@@ -51,12 +54,20 @@ final class User
             isActive: (bool) $row['is_active'],
             createdAt: new DateTimeImmutable((string) $row['created_at']),
             updatedAt: new DateTimeImmutable((string) $row['updated_at']),
+            emailVerifiedAt: $verifiedAt === null || $verifiedAt === ''
+                ? null
+                : new DateTimeImmutable((string) $verifiedAt),
         );
     }
 
     public function verifyPassword(string $plainPassword): bool
     {
         return password_verify($plainPassword, $this->passwordHash);
+    }
+
+    public function isEmailVerified(): bool
+    {
+        return $this->emailVerifiedAt !== null;
     }
 
     /**
@@ -72,6 +83,7 @@ final class User
             'name' => $this->name,
             'roles' => $this->roles,
             'isActive' => $this->isActive,
+            'emailVerified' => $this->isEmailVerified(),
         ];
     }
 }

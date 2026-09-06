@@ -19,6 +19,17 @@ const router = createRouter({
     },
     {
       /*
+       * Rejestracja nowego biura. Publiczna - to druga (obok strony
+       * informacyjnej) sciezka wejscia dla kogos bez konta. Krok z kodem
+       * e-mail obsluguje ten sam widok.
+       */
+      path: '/rejestracja',
+      name: 'register',
+      component: () => import('../modules/auth/RegisterView.vue'),
+      meta: { public: true },
+    },
+    {
+      /*
        * Strona informacyjna. Publiczna i pod glownym adresem - to ona jest
        * pierwszym kontaktem z Solidusem dla kogos, kto jeszcze nie ma konta.
        * Zalogowany uzytkownik trafia do aplikacji z menu, nie przez przekierowanie:

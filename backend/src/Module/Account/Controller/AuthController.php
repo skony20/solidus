@@ -65,7 +65,23 @@ final readonly class AuthController extends ApiController
 
         $user = $this->users->findByEmail($tenant->id, $email);
 
-        if ($user === null || !$user->isActive || !$user->verifyPassword($password)) {
+        if ($user === null || !$user->verifyPassword($password)) {
+            return $this->json->unauthorized('Nieprawidlowe dane logowania.');
+        }
+
+        // Dopiero po poprawnym hasle mozemy zdradzic, ze konto istnieje, ale
+        // czeka na potwierdzenie adresu - inaczej ekran logowania staje sie
+        // narzedziem do sprawdzania, czy dany e-mail jest zarejestrowany.
+        // `reason` pozwala frontowi przejsc na krok z kodem.
+        if (!$user->isEmailVerified()) {
+            return $this->json->error(
+                403,
+                'Najpierw potwierdz adres e-mail. Wpisz kod z wiadomosci powitalnej.',
+                ['reason' => ['email_unverified']],
+            );
+        }
+
+        if (!$user->isActive) {
             return $this->json->unauthorized('Nieprawidlowe dane logowania.');
         }
 

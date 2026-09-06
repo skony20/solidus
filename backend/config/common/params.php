@@ -86,6 +86,15 @@ return [
             'allowedOrigin' => Env::string('FRONTEND_ORIGIN', 'http://localhost:5173'),
         ],
 
+        // Poczta wychodzaca. DSN w formacie Symfony Mailer - w dev kieruje na
+        // Mailhog (nic nie wychodzi na zewnatrz), na produkcji na prawdziwy
+        // serwer SMTP. Adres nadawcy jest jeden dla calego systemu.
+        'mail' => [
+            'dsn' => Env::string('MAILER_DSN', 'smtp://mailhog:1025'),
+            'fromEmail' => Env::string('MAILER_FROM', 'no-reply@solidus.local'),
+            'fromName' => Env::string('MAILER_FROM_NAME', 'Solidus'),
+        ],
+
         // ---------------------------------------------------------------
         // Zewnetrzne aplikacje. Solidus tylko z nimi rozmawia - nie liczy
         // scoringu AML, nie prowadzi delegacji, nie obsluguje zgloszen

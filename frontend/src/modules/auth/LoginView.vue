@@ -19,6 +19,13 @@ async function submit(): Promise<void> {
   if (ok) {
     // Wracamy tam, gdzie uzytkownik chcial wejsc przed przekierowaniem.
     await router.push((route.query.redirect as string) ?? '/mission-control')
+    return
+  }
+
+  // Konto istnieje, ale adres e-mail czeka na potwierdzenie - przenosimy na
+  // ekran rejestracji, ktory zacznie od razu od pola na kod.
+  if (auth.pendingVerification) {
+    await router.push({ name: 'register' })
   }
 }
 </script>
@@ -79,6 +86,13 @@ async function submit(): Promise<void> {
         <GlowButton type="submit" :disabled="auth.isLoading" class="mt-1.5 w-full">
           {{ auth.isLoading ? 'Logowanie...' : 'Zaloguj się' }}
         </GlowButton>
+
+        <p class="text-center text-xs text-content-variant">
+          Nie masz konta?
+          <RouterLink to="/rejestracja" class="font-semibold text-cyan-bright no-underline">
+            Zarejestruj biuro
+          </RouterLink>
+        </p>
       </form>
     </GlassCard>
   </div>

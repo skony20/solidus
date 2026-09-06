@@ -162,6 +162,11 @@ abstract class DatabaseTestCase extends TestCase
             'name' => 'VARCHAR(255) NOT NULL',
             'roles' => 'JSON NOT NULL',
             'is_active' => 'TINYINT(1) NOT NULL DEFAULT 1',
+            'email_verified_at' => 'DATETIME(6) NULL',
+            'verification_code_hash' => 'VARCHAR(255) NULL',
+            'verification_code_expires_at' => 'DATETIME(6) NULL',
+            'verification_code_sent_at' => 'DATETIME(6) NULL',
+            'verification_attempts' => 'SMALLINT NOT NULL DEFAULT 0',
             'created_at' => 'DATETIME(6) NOT NULL',
             'updated_at' => 'DATETIME(6) NOT NULL',
         ], $options)->execute();

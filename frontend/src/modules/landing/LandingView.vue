@@ -118,13 +118,12 @@ function scrollTo(id: string): void {
           >
             Zaloguj się
           </RouterLink>
-          <button
-            type="button"
-            class="rounded-nav bg-linear-to-br from-cyan-bright to-cyan px-5 py-2.5 text-[13px] font-bold text-[#00363a] transition-all duration-150 hover:shadow-glow"
-            @click="scrollTo('audyt')"
+          <RouterLink
+            to="/rejestracja"
+            class="rounded-nav bg-linear-to-br from-cyan-bright to-cyan px-5 py-2.5 text-[13px] font-bold text-[#00363a] no-underline transition-all duration-150 hover:shadow-glow"
           >
             Wczesny dostęp
-          </button>
+          </RouterLink>
         </div>
       </div>
     </nav>

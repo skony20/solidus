@@ -6,8 +6,13 @@ namespace App\Module\Account\Controller;
 
 use App\Module\Account\Repository\TenantRepository;
 use App\Module\Account\Repository\UserRepository;
+use App\Module\Account\Service\EmailVerificationException;
+use App\Module\Account\Service\EmailVerificationService;
+use App\Module\Account\Service\RefreshCookie;
+use App\Shared\Auth\JwtService;
 use App\Shared\Http\ApiController;
 use App\Shared\Http\JsonResponse;
+use App\Shared\Mail\MailerException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Yiisoft\Db\Connection\ConnectionInterface;
@@ -16,7 +21,9 @@ use Yiisoft\Db\Connection\ConnectionInterface;
  * Zalozenie nowego biura rachunkowego wraz z kontem wlasciciela.
  *
  * Tenant i pierwszy uzytkownik powstaja w jednej transakcji - biuro bez
- * mozliwosci zalogowania sie byloby smieciem w bazie.
+ * mozliwosci zalogowania sie byloby smieciem w bazie. Konto jest jednak
+ * NIEZWERYFIKOWANE: logowanie odblokowuje sie dopiero po podaniu kodu
+ * wyslanego na adres e-mail (patrz EmailVerificationService).
  */
 final readonly class RegistrationController extends ApiController
 {
@@ -25,6 +32,9 @@ final readonly class RegistrationController extends ApiController
         private ConnectionInterface $db,
         private TenantRepository $tenants,
         private UserRepository $users,
+        private EmailVerificationService $verification,
+        private JwtService $jwtService,
+        private RefreshCookie $refreshCookie,
     ) {
         parent::__construct($json);
     }
@@ -32,6 +42,10 @@ final readonly class RegistrationController extends ApiController
     /**
      * POST /api/auth/register
      * Body: {tenantName, email, password, name}
+     *
+     * Odpowiedz 201 nie zawiera tokenow - konto trzeba najpierw potwierdzic
+     * kodem. Pole `emailSent` mowi frontowi, czy wiadomosc udalo sie wyslac
+     * (jesli nie - uzytkownik uzyje "wyslij ponownie").
      */
     public function register(ServerRequestInterface $request): ResponseInterface
     {
@@ -67,7 +81,7 @@ final readonly class RegistrationController extends ApiController
 
         try {
             $tenant = $this->tenants->create($tenantName, $slug);
-            $user = $this->users->create($tenant->id, $email, $password, $name, ['owner']);
+            $user = $this->users->create($tenant->id, $email, $password, $name, ['owner'], emailVerified: false);
             $transaction->commit();
         } catch (\Throwable $e) {
             $transaction->rollBack();
@@ -75,10 +89,109 @@ final readonly class RegistrationController extends ApiController
             throw $e;
         }
 
+        // Wysylka POZA transakcja: jesli SMTP zawiedzie, konto i tak istnieje,
+        // a uzytkownik poprosi o nowy kod. Nie chcemy wycofywac rejestracji
+        // z powodu chwilowej awarii poczty.
+        $emailSent = true;
+
+        try {
+            $this->verification->startForNewUser($user, $tenant);
+        } catch (MailerException) {
+            $emailSent = false;
+        }
+
         return $this->json->created([
-            'tenant' => $tenant->toArray(),
-            'user' => $user->toArray(),
+            'tenant' => ['name' => $tenant->name, 'slug' => $tenant->slug],
+            'email' => $user->email,
+            'verificationRequired' => true,
+            'emailSent' => $emailSent,
         ]);
+    }
+
+    /**
+     * POST /api/auth/verify-email
+     * Body: {tenant: "slug-biura", email, code}
+     *
+     * Po poprawnym kodzie konto jest aktywne i od razu zalogowane - odpowiedz
+     * ma ten sam ksztalt co /api/auth/login (access token + ciasteczko refresh).
+     */
+    public function verifyEmail(ServerRequestInterface $request): ResponseInterface
+    {
+        $body = $this->body($request);
+        $slug = trim((string) ($body['tenant'] ?? ''));
+        $email = trim((string) ($body['email'] ?? ''));
+        $code = trim((string) ($body['code'] ?? ''));
+
+        if ($slug === '' || $email === '' || $code === '') {
+            return $this->json->unprocessable('Podaj biuro, e-mail i kod.');
+        }
+
+        $tenant = $this->tenants->findBySlug($slug);
+        $user = $tenant === null ? null : $this->users->findByEmail($tenant->id, $email);
+
+        if ($tenant === null || $user === null) {
+            return $this->json->unprocessable(
+                EmailVerificationException::accountNotFound()->getMessage(),
+                ['reason' => [EmailVerificationException::accountNotFound()->reason]],
+            );
+        }
+
+        try {
+            $verifiedUser = $this->verification->verify($user, $code);
+        } catch (EmailVerificationException $e) {
+            return $this->json->unprocessable($e->getMessage(), ['reason' => [$e->reason]]);
+        }
+
+        $tokens = $this->jwtService->issue(
+            userId: (int) $verifiedUser->id,
+            tenantId: $tenant->id,
+            roles: $verifiedUser->roles,
+            userAgent: $request->getHeaderLine('User-Agent') ?: null,
+            ip: $this->clientIp($request),
+        );
+
+        $response = $this->json->ok([
+            'accessToken' => $tokens->accessToken,
+            'expiresIn' => $tokens->accessExpiresIn,
+            'user' => $verifiedUser->toArray(),
+            'tenant' => $tenant->toArray(),
+        ]);
+
+        return $this->refreshCookie->attach($response, $tokens->refreshToken);
+    }
+
+    /**
+     * POST /api/auth/resend-code
+     * Body: {tenant: "slug-biura", email}
+     */
+    public function resendCode(ServerRequestInterface $request): ResponseInterface
+    {
+        $body = $this->body($request);
+        $slug = trim((string) ($body['tenant'] ?? ''));
+        $email = trim((string) ($body['email'] ?? ''));
+
+        if ($slug === '' || $email === '') {
+            return $this->json->unprocessable('Podaj biuro i e-mail.');
+        }
+
+        $tenant = $this->tenants->findBySlug($slug);
+        $user = $tenant === null ? null : $this->users->findByEmail($tenant->id, $email);
+
+        if ($tenant === null || $user === null) {
+            $e = EmailVerificationException::accountNotFound();
+
+            return $this->json->unprocessable($e->getMessage(), ['reason' => [$e->reason]]);
+        }
+
+        try {
+            $this->verification->resend($tenant, $user);
+        } catch (EmailVerificationException $e) {
+            return $this->json->unprocessable($e->getMessage(), ['reason' => [$e->reason]]);
+        } catch (MailerException) {
+            return $this->json->error(502, 'Nie udalo sie wyslac wiadomosci. Sprobuj za chwile.');
+        }
+
+        return $this->json->ok(['status' => 'sent']);
     }
 
     /**
@@ -111,5 +224,12 @@ final readonly class RegistrationController extends ApiController
         $value = trim($value, '-');
 
         return $value === '' ? 'biuro' : mb_substr($value, 0, 80);
+    }
+
+    private function clientIp(ServerRequestInterface $request): ?string
+    {
+        $ip = $request->getServerParams()['REMOTE_ADDR'] ?? null;
+
+        return is_string($ip) && $ip !== '' ? $ip : null;
     }
 }

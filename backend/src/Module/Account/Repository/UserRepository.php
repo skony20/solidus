@@ -44,7 +44,8 @@ final readonly class UserRepository
 
     /**
      * Wyszukanie po slugu biura zamiast po tenant_id - na potrzeby konsoli,
-     * gdzie czlowiek zna nazwe biura, a nie jego identyfikator liczbowy.
+     * gdzie czlowiek zna nazwe biura, a nie jego identyfikator liczbowy,
+     * oraz publicznego potwierdzania e-maila (klient zna tylko slug).
      */
     public function findByEmailAndTenantSlug(string $tenantSlug, string $email): ?User
     {
@@ -89,6 +90,9 @@ final readonly class UserRepository
 
     /**
      * @param string[] $roles
+     * @param bool $emailVerified false przy rejestracji przez formularz - konto
+     *        czeka wtedy na potwierdzenie adresu. true dla kont zakladanych
+     *        z konsoli i w testach, ktore maja od razu dzialac.
      */
     public function create(
         int $tenantId,
@@ -96,9 +100,11 @@ final readonly class UserRepository
         string $plainPassword,
         string $name,
         array $roles = ['owner'],
+        bool $emailVerified = true,
     ): User {
         $now = new DateTimeImmutable();
         $hash = password_hash($plainPassword, PASSWORD_DEFAULT);
+        $verifiedAt = $emailVerified ? $now : null;
 
         $this->db->createCommand()->insert(self::TABLE, [
             'tenant_id' => $tenantId,
@@ -107,6 +113,7 @@ final readonly class UserRepository
             'name' => $name,
             'roles' => json_encode(array_values($roles), JSON_THROW_ON_ERROR),
             'is_active' => 1,
+            'email_verified_at' => $verifiedAt?->format('Y-m-d H:i:s.u'),
             'created_at' => $now->format('Y-m-d H:i:s.u'),
             'updated_at' => $now->format('Y-m-d H:i:s.u'),
         ])->execute();
@@ -121,6 +128,94 @@ final readonly class UserRepository
             isActive: true,
             createdAt: $now,
             updatedAt: $now,
+            emailVerifiedAt: $verifiedAt,
         );
+    }
+
+    /**
+     * Zapisuje swiezy kod weryfikacyjny (hash) i zeruje licznik bledych prob.
+     */
+    public function storeVerificationCode(
+        int $userId,
+        string $codeHash,
+        DateTimeImmutable $expiresAt,
+        DateTimeImmutable $sentAt,
+    ): void {
+        $this->db->createCommand()->update(
+            self::TABLE,
+            [
+                'verification_code_hash' => $codeHash,
+                'verification_code_expires_at' => $expiresAt->format('Y-m-d H:i:s.u'),
+                'verification_code_sent_at' => $sentAt->format('Y-m-d H:i:s.u'),
+                'verification_attempts' => 0,
+                'updated_at' => $sentAt->format('Y-m-d H:i:s.u'),
+            ],
+            ['id' => $userId],
+        )->execute();
+    }
+
+    /**
+     * Stan kodu weryfikacyjnego. Trzymany osobno od encji {@see User}, bo to
+     * szczegol jednej sciezki (rejestracja), a nie cecha uzytkownika.
+     *
+     * @return array{hash: ?string, expiresAt: ?DateTimeImmutable, sentAt: ?DateTimeImmutable, attempts: int}
+     */
+    public function verificationState(int $userId): array
+    {
+        $row = (new Query($this->db))
+            ->select([
+                'verification_code_hash',
+                'verification_code_expires_at',
+                'verification_code_sent_at',
+                'verification_attempts',
+            ])
+            ->from(self::TABLE)
+            ->where(['id' => $userId])
+            ->one();
+
+        if (!is_array($row)) {
+            return ['hash' => null, 'expiresAt' => null, 'sentAt' => null, 'attempts' => 0];
+        }
+
+        $toDate = static fn(mixed $v): ?DateTimeImmutable => $v === null || $v === ''
+            ? null
+            : new DateTimeImmutable((string) $v);
+
+        $hash = $row['verification_code_hash'];
+
+        return [
+            'hash' => $hash === null || $hash === '' ? null : (string) $hash,
+            'expiresAt' => $toDate($row['verification_code_expires_at']),
+            'sentAt' => $toDate($row['verification_code_sent_at']),
+            'attempts' => (int) $row['verification_attempts'],
+        ];
+    }
+
+    public function incrementVerificationAttempts(int $userId): void
+    {
+        $this->db->createCommand(
+            'UPDATE ' . $this->db->getQuoter()->quoteTableName(self::TABLE)
+            . ' SET verification_attempts = verification_attempts + 1 WHERE id = :id',
+            ['id' => $userId],
+        )->execute();
+    }
+
+    /**
+     * Oznacza adres jako potwierdzony i kasuje juz niepotrzebny kod.
+     */
+    public function markEmailVerified(int $userId, DateTimeImmutable $at): void
+    {
+        $this->db->createCommand()->update(
+            self::TABLE,
+            [
+                'email_verified_at' => $at->format('Y-m-d H:i:s.u'),
+                'verification_code_hash' => null,
+                'verification_code_expires_at' => null,
+                'verification_code_sent_at' => null,
+                'verification_attempts' => 0,
+                'updated_at' => $at->format('Y-m-d H:i:s.u'),
+            ],
+            ['id' => $userId],
+        )->execute();
     }
 }

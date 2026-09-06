@@ -36,6 +36,9 @@ services:
       DB_PASSWORD: solidus
       JWT_SECRET: dev-tylko-lokalnie-zmien-na-produkcji-0123456789
       FRONTEND_ORIGIN: http://localhost:5173
+      # Poczta wychodzaca trafia do Mailhoga - podglad na http://localhost:8025.
+      MAILER_DSN: smtp://mailhog:1025
+      MAILER_FROM: no-reply@solidus.local
       # Testy integracyjne celowo czytaja wlasne zmienne TEST_DB_*, zeby nigdy
       # nie trafic w baze robocza - one kasuja i tworza tabele od nowa.
       TEST_DB_HOST: mysql
