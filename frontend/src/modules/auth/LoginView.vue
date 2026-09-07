@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import GlowButton from '../../components/ui/GlowButton.vue'
+import PasswordInput from '../../components/ui/PasswordInput.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -67,12 +68,10 @@ async function submit(): Promise<void> {
 
         <label class="flex flex-col gap-1.5">
           <span class="text-xs font-semibold text-content-variant">Hasło</span>
-          <input
+          <PasswordInput
             v-model="password"
-            type="password"
             required
             autocomplete="current-password"
-            class="rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-hidden focus:border-[rgba(0,219,231,0.5)]"
           />
         </label>
 
