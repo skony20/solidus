@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import GlowButton from '../../components/ui/GlowButton.vue'
+import PasswordInput from '../../components/ui/PasswordInput.vue'
 
 /**
  * Rejestracja nowego biura w dwoch krokach:
@@ -25,6 +26,8 @@ const tenantName = ref('')
 const name = ref('')
 const email = ref('')
 const password = ref('')
+const passwordConfirm = ref('')
+const confirmError = ref<string | null>(null)
 
 const tenantSlug = ref('')
 const code = ref('')
@@ -61,6 +64,13 @@ onMounted(() => {
 onBeforeUnmount(() => window.clearInterval(cooldownTimer))
 
 async function submitForm(): Promise<void> {
+  confirmError.value = null
+
+  if (password.value !== passwordConfirm.value) {
+    confirmError.value = 'Hasła nie są identyczne.'
+    return
+  }
+
   const result = await auth.register(tenantName.value, name.value, email.value, password.value)
 
   if (!result.ok) {
@@ -158,16 +168,26 @@ const resendLabel = computed(() =>
 
         <label class="flex flex-col gap-1.5">
           <span class="text-xs font-semibold text-content-variant">Hasło (min. 10 znaków)</span>
-          <input
+          <PasswordInput
             v-model="password"
-            type="password"
             required
             minlength="10"
             autocomplete="new-password"
-            class="rounded-glass-sm border border-outline bg-surface-low px-3.5 py-2.5 text-sm text-content outline-hidden focus:border-[rgba(0,219,231,0.5)]"
           />
           <span v-if="fieldError('password')" class="text-xs text-magenta-bright">
             {{ fieldError('password') }}
+          </span>
+        </label>
+
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs font-semibold text-content-variant">Powtórz hasło</span>
+          <PasswordInput
+            v-model="passwordConfirm"
+            required
+            autocomplete="new-password"
+          />
+          <span v-if="confirmError" class="text-xs text-magenta-bright">
+            {{ confirmError }}
           </span>
         </label>
 
